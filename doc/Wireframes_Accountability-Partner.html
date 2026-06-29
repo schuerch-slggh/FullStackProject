@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframes — Accountability-Partner</title>
+<style>
+  :root {
+    --surface-0: #f1efe8;
+    --surface-1: #f7f6f1;
+    --surface-2: #ffffff;
+    --border: #d3d1c7;
+    --border-strong: #b4b2a9;
+    --border-stronger: #888780;
+    --text-primary: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-muted: #888780;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 2rem 1.5rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 0.25rem; }
+  .sub { font-size: 14px; color: var(--text-secondary); margin: 0 0 0.5rem; }
+  .flow { font-size: 13px; color: var(--text-muted); margin: 0 0 1.75rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+  .screen { background: var(--surface-2); border: 0.5px solid var(--border-strong); border-radius: 12px; overflow: hidden; }
+  .head { background: var(--surface-0); padding: 8px 12px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .body { padding: 12px; }
+  .lbl { font-size: 12px; color: var(--text-muted); margin: 0 0 4px; }
+  .field { border: 0.5px solid var(--border-strong); border-radius: var(--radius); padding: 8px 10px; font-size: 13px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .field.plain { display: block; margin-bottom: 12px; }
+  .btn-primary { background: var(--surface-0); border: 0.5px solid var(--border-stronger); border-radius: var(--radius); padding: 10px; text-align: center; font-size: 13px; font-weight: 500; }
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .track { flex: 1; height: 4px; background: var(--border-strong); border-radius: 2px; position: relative; }
+  .knob { position: absolute; left: 40%; top: -7px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface-0); border: 0.5px solid var(--border-stronger); }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; border: 0.5px solid var(--border-stronger); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tag { font-size: 11px; border: 0.5px solid var(--border-strong); border-radius: 12px; padding: 2px 8px; color: var(--text-secondary); }
+  .quote { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+  .match-card { border: 0.5px solid var(--border-strong); border-radius: var(--radius); padding: 10px; margin-bottom: 8px; }
+  .match-card.dim { border-color: var(--border); }
+  .match-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 13px; font-weight: 500; }
+  .bar { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 6px; }
+  .bar > div { height: 4px; background: var(--text-secondary); border-radius: 2px; }
+  .small { font-size: 11px; color: var(--text-muted); }
+  .row2 { display: flex; gap: 8px; }
+  .btn-ghost { flex: 1; border: 0.5px solid var(--border-strong); border-radius: var(--radius); padding: 8px; text-align: center; font-size: 12px; color: var(--text-secondary); }
+  .btn-fill { flex: 1; background: var(--surface-0); border: 0.5px solid var(--border-stronger); border-radius: var(--radius); padding: 8px; text-align: center; font-size: 12px; font-weight: 500; }
+  .chat { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; min-height: 150px; }
+  .msg { max-width: 80%; border-radius: 12px; padding: 8px 10px; font-size: 12px; }
+  .msg.them { align-self: flex-start; background: var(--surface-0); border: 0.5px solid var(--border); border-bottom-left-radius: 2px; color: var(--text-secondary); }
+  .msg.me { align-self: flex-end; background: var(--surface-1); border: 0.5px solid var(--border-strong); border-bottom-right-radius: 2px; }
+  .composer { display: flex; gap: 6px; align-items: center; }
+  .composer .input { flex: 1; border: 0.5px solid var(--border-strong); border-radius: 18px; padding: 8px 12px; font-size: 12px; color: var(--text-muted); }
+  .send { width: 34px; height: 34px; border-radius: 50%; background: var(--surface-0); border: 0.5px solid var(--border-stronger); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .ic { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Wireframes — Accountability-Partner</h1>
+  <p class="sub">Papier-Prototyp der vier Grundfunktionen · User-Experience-Artefakt · FS2026</p>
+  <p class="flow">User-Flow: Search (Filter setzen) → View (Profil ansehen) → Match (Übereinstimmung, verbinden) → Chat (gegenseitige Check-ins)</p>
+
+  <div class="grid">
+
+    <div class="screen">
+      <div class="head"><span class="ic">&#128269;</span> Search — Partner finden</div>
+      <div class="body">
+        <p class="lbl">Zielkategorie</p>
+        <div class="field">Lernen <span>&#9662;</span></div>
+        <p class="lbl">Frequenz</p>
+        <div class="field">3×/Woche <span>&#9662;</span></div>
+        <p class="lbl">Distanz</p>
+        <div class="slider-row"><div class="track"><div class="knob"></div></div><span class="small">10 km</span></div>
+        <p class="lbl">Check-in-Zeit</p>
+        <div class="field plain">abends</div>
+        <div class="btn-primary">Suchen</div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="head"><span class="ic">&#128100;</span> View — Profil anzeigen</div>
+      <div class="body">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <div class="avatar">&#128247;</div>
+          <div>
+            <div style="font-size:14px; font-weight:500;">Marco, 21</div>
+            <div class="small" style="color:var(--text-secondary);">&#128293; Streak: 12 Tage</div>
+          </div>
+        </div>
+        <div class="tags">
+          <span class="tag">Lernen</span>
+          <span class="tag">3×/Woche</span>
+          <span class="tag">abends</span>
+        </div>
+        <p class="lbl">Ziel</p>
+        <div class="quote">„Regelmässig für Modul X lernen statt nur vor Prüfungen."</div>
+        <div class="btn-primary">Match anfragen</div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="head"><span class="ic">&#9825;</span> Match — Vorschläge</div>
+      <div class="body">
+        <p class="lbl">Beste Übereinstimmung</p>
+        <div class="match-card">
+          <div class="match-top"><span>Sara, 23</span><span style="color:var(--text-secondary);">87 %</span></div>
+          <div class="bar"><div style="width:87%;"></div></div>
+          <span class="small">gleiche Kategorie · Zeit passt · 3 km</span>
+        </div>
+        <div class="match-card dim">
+          <div class="match-top"><span>Lena, 24</span><span style="color:var(--text-secondary);">64 %</span></div>
+          <div class="bar"><div style="width:64%;"></div></div>
+          <span class="small">gleiche Kategorie · Zeit abweichend</span>
+        </div>
+        <div class="row2" style="margin-top:12px;">
+          <div class="btn-ghost">Überspringen</div>
+          <div class="btn-fill">Verbinden</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="head"><span class="ic">&#128172;</span> Chat — Check-in</div>
+      <div class="body">
+        <div class="chat">
+          <div class="msg them">Heute 30 Min gelernt &#9989; Wie läufts bei dir?</div>
+          <div class="msg me">Auch durch! Streak hält &#128293;</div>
+          <div class="msg them">Stark. Morgen gleiche Zeit?</div>
+        </div>
+        <div class="composer">
+          <div class="input">Nachricht schreiben …</div>
+          <div class="send">&#10148;</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
