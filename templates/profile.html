@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ user.name }} · Momentum{% endblock %}
+
+{% block content %}
+<div class="profile-grid">
+
+  <section class="card-soft profile-head">
+    <img class="avatar" src="{{ user.photo_url }}" alt="Profilfoto von {{ user.name }}">
+    <div class="profile-id">
+      <h1 class="profile-name">{{ user.name }}</h1>
+      <p class="profile-meta">
+        {% if user.age %}{{ user.age }} Jahre{% endif %}
+        {% if user.age and user.city %} · {% endif %}
+        {% if user.city %}{{ user.city }}{% endif %}
+      </p>
+    </div>
+    <div class="streak" title="Aktueller Streak">
+      <span class="streak-flame">▲</span>
+      <span class="streak-num">{{ user.streak }}</span>
+      <span class="streak-label">Tage<br>Streak</span>
+    </div>
+  </section>
+
+  <section class="card-soft">
+    <p class="section-eyebrow">Mein Commitment</p>
+    {% if user.goal_category %}<span class="pill">{{ user.goal_category }}</span>{% endif %}
+    <p class="goal-text">{{ user.goal_text }}</p>
+    <div class="commit-facts">
+      <div>
+        <span class="fact-label">Frequenz</span>
+        <span class="fact-value">{{ user.frequency or "—" }}</span>
+      </div>
+      <div>
+        <span class="fact-label">Check-in</span>
+        <span class="fact-value">{{ user.preferred_checkin_time or "—" }}</span>
+      </div>
+    </div>
+  </section>
+
+  {% if user.bio %}
+  <section class="card-soft">
+    <p class="section-eyebrow">Über mich</p>
+    <p class="bio">{{ user.bio }}</p>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

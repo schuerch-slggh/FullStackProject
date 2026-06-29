@@ -12,3 +12,4 @@ SQLAlchemy
 typing_extensions
 Werkzeug
 WTForms
+email-validator

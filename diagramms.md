@@ -1,4 +1,4 @@
-# ER-ModelL User
+# ER-Modell User
 
 | Type | Field | Key |
 |----------|-----------------------|-----|

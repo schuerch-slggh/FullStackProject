@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Anmelden · Momentum{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <p class="auth-eyebrow">Accountability-Partner</p>
+    <h1 class="auth-title">Dranbleiben,<br>gemeinsam.</h1>
+    <p class="auth-sub">Melde dich an, um dein Profil und deinen Streak zu sehen.</p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control", placeholder="du@example.com", autocomplete="email") }}
+      </div>
+      <div class="mb-3">
+        {{ form.password.label(class="form-label") }}
+        {{ form.password(class="form-control", placeholder="••••••••", autocomplete="current-password") }}
+      </div>
+      {{ form.submit(class="btn btn-ember w-100") }}
+    </form>
+
+    <p class="auth-hint">
+      Demo: <code>anna.keller@example.com</code> · <code>accountability</code>
+    </p>
+  </div>
+</div>
+{% endblock %}
