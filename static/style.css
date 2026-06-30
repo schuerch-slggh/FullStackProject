@@ -154,3 +154,81 @@ body {
   .streak { grid-column: 1 / -1; justify-self: start; display: flex; align-items: baseline; gap: .4rem; }
   .streak-label { margin-top: 0; }
 }
+
+/* ---- Landing / Hero ---- */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2rem;
+  padding: 2.5rem 0 1rem;
+}
+.hero-eyebrow {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: .75rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ember); margin-bottom: .9rem;
+}
+.hero-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700; font-size: 2.9rem; line-height: 1.03;
+  letter-spacing: -0.025em; margin-bottom: 1rem;
+}
+.hero-sub { color: var(--slate); font-size: 1.1rem; max-width: 30rem; margin-bottom: 1.75rem; }
+.hero-cta { display: flex; gap: .75rem; flex-wrap: wrap; }
+.hero-streak {
+  background: var(--ember-tint);
+  border-radius: 20px;
+  padding: 2rem 2.25rem;
+  text-align: center;
+  display: grid; justify-items: center; line-height: 1;
+}
+.hero-streak .streak-flame { font-size: 1.4rem; }
+.hero-streak .streak-num {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700; font-size: 3.6rem; color: var(--ember); margin: .2rem 0;
+}
+.hero-streak .streak-label { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--slate); }
+
+/* ---- How it works ---- */
+.steps {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+  margin-top: 2.5rem;
+}
+.step {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+}
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-family: "Space Grotesk", sans-serif; font-weight: 700;
+  margin-bottom: .85rem;
+}
+.step h3 { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: .4rem; }
+.step p { color: var(--slate); font-size: .95rem; margin: 0; }
+
+/* ---- Registration form ---- */
+.auth-card-wide { max-width: 560px; }
+.form-section {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--slate);
+  margin: 1.5rem 0 .75rem; padding-top: 1rem; border-top: 1px solid var(--border);
+}
+.form-section:first-of-type { border-top: none; padding-top: 0; margin-top: .5rem; }
+.row { display: flex; gap: 1rem; }
+.row .col { flex: 1; }
+select.form-control { appearance: auto; }
+textarea.form-control { min-height: 5rem; resize: vertical; }
+.field-error { color: #b42318; font-size: .82rem; margin-top: .3rem; }
+.auth-hint a { color: var(--ember); text-decoration: none; font-weight: 600; }
+.auth-hint a:hover { text-decoration: underline; }
+.auth-demo { margin-top: .5rem; }
+
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-title { font-size: 2.2rem; }
+  .steps { grid-template-columns: 1fr; }
+  .row { flex-direction: column; gap: 0; }
+}

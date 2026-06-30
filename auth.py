@@ -1,15 +1,18 @@
-"""Auth controller (login / logout)."""
+"""Auth controller (login / logout / register)."""
 from flask import Blueprint, render_template, redirect, url_for, flash
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 
+from . import db
 from .models import User
-from .forms import LoginForm
+from .forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("main.profile"))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data.lower().strip()).first()
@@ -20,8 +23,38 @@ def login():
     return render_template("login.html", form=form)
 
 
+@auth_bp.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("main.profile"))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        email = form.email.data.lower().strip()
+        user = User(
+            email=email,
+            name=form.name.data.strip(),
+            age=form.age.data,
+            city=form.city.data,
+            goal_category=form.goal_category.data,
+            goal_text=form.goal_text.data,
+            frequency=form.frequency.data,
+            preferred_checkin_time=form.preferred_checkin_time.data,
+            bio=form.bio.data,
+            # Stabiler Default-Avatar abgeleitet aus der E-Mail
+            photo_url=f"https://i.pravatar.cc/300?u={email}",
+            streak=0,
+        )
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        login_user(user)
+        flash("Willkommen bei Momentum! Dein Profil ist angelegt.", "success")
+        return redirect(url_for("main.profile"))
+    return render_template("register.html", form=form)
+
+
 @auth_bp.route("/logout")
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("auth.login"))
+    return redirect(url_for("main.index"))

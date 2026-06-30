@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Momentum · Dranbleiben, gemeinsam{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-text">
+    <p class="hero-eyebrow">Accountability-Partner</p>
+    <h1 class="hero-title">Ziele erreicht man<br>nicht allein.</h1>
+    <p class="hero-sub">
+      Momentum verbindet dich mit jemandem, der dasselbe durchzieht wie du —
+      und ihr haltet euch mit täglichen Check-ins gegenseitig auf Kurs.
+    </p>
+    <div class="hero-cta">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-ember">Konto erstellen</a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Anmelden</a>
+    </div>
+  </div>
+  <div class="hero-streak">
+    <span class="streak-flame">▲</span>
+    <span class="streak-num">31</span>
+    <span class="streak-label">Tage Streak</span>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="step">
+    <span class="step-num">1</span>
+    <h3>Ziel setzen</h3>
+    <p>Sag, was du durchziehen willst — Lernen, Sport, ein Projekt oder eine neue Gewohnheit.</p>
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    <h3>Partner finden</h3>
+    <p>Wir matchen dich mit jemandem mit ähnlichem Ziel, passender Frequenz und Check-in-Zeit.</p>
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    <h3>Dranbleiben</h3>
+    <p>Täglich kurz einchecken, Streak aufbauen, euch gegenseitig motivieren.</p>
+  </div>
+</section>
+{% endblock %}
