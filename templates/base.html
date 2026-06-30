@@ -19,7 +19,9 @@
       {% if current_user.is_authenticated %}
         <div class="d-flex gap-2 align-items-center">
           <a class="nav-link-text" href="{{ url_for('main.search') }}">Suche</a>
+          <a class="nav-link-text" href="{{ url_for('main.coach') }}">Coach</a>
           <a class="nav-link-text" href="{{ url_for('main.profile') }}">Profil</a>
+          <a class="nav-link-text" href="{{ url_for('main.settings') }}">Einstellungen</a>
           <a class="btn btn-sm btn-ghost" href="{{ url_for('auth.logout') }}">Abmelden</a>
         </div>
       {% else %}

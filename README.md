@@ -39,8 +39,18 @@ pytest tests/ -v
 |---|---|---|
 | `SECRET_KEY` | Session-Sicherheit | `dev-secret-change-me` |
 | `DATABASE_URL` | Datenbank-URI | SQLite `instance/app.db` |
+| `MAIL_SERVER` | SMTP-Host für E-Mail-Notification (FA-10) | _leer → nur Log_ |
+| `MAIL_PORT` | SMTP-Port | `587` |
+| `MAIL_USE_TLS` | STARTTLS verwenden (`1`/`0`) | `1` |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP-Login | _leer_ |
+| `MAIL_SENDER` | Absenderadresse | `noreply@momentum.local` |
+| `ANTHROPIC_API_KEY` | KI-Coach via Anthropic-API (FA-11) | _leer → lokaler Fallback_ |
 
 MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
+
+Ohne `MAIL_SERVER` werden E-Mails nur geloggt; ohne `ANTHROPIC_API_KEY` nutzt der
+KI-Coach eine deterministische lokale Formulierung. Beides hält die App ohne
+externe Dienste lauffähig.
 
 ## Routen
 
@@ -60,26 +70,37 @@ MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 | `/connections/<id>/decline` | Anfrage ablehnen / zurückziehen (POST) |
 | `/chat/<id>` | 1:1-Chat einer aktiven Verbindung (GET zeigt Verlauf, POST sendet) |
 | `/checkin` | Check-in für heute markieren (POST) |
+| `/settings` | E-Mail-Benachrichtigungen an/aus (GET/POST) |
+| `/coach` | KI-Coach-Seite (GET) |
+| `/coach/motivate` | Motivierende Rückmeldung erzeugen (POST) |
+| `/coach/sharpen` | Vages Ziel konkreter formulieren (POST) |
 
 ## Projektstruktur
 
 ```
-__init__.py      App-Factory (create_app, CSRFProtect, DB, Login)
+__init__.py      App-Factory (create_app, CSRFProtect, DB, Login, MAIL_*-Config)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
-views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil,
-                            Suche (match_score), Verbindungen (send/accept/decline),
-                            Chat (chat) und Check-in (checkin)
+views.py         Blueprint: Profil (inkl. Erinnerungen), Bearbeiten, Goal-Verwaltung,
+                            Fremdprofil, Suche (match_score), Verbindungen
+                            (send/accept/decline), Chat, Check-in, Einstellungen,
+                            KI-Coach (coach/motivate/sharpen)
 models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin)
-                 + Domain-Helfer: match_score(), Connection.between()/.active_for()/
-                   .involves()/.partner_of(); berechnete Property User.streak
-forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm,
-                          GoalForm, SearchForm, MessageForm, CheckinForm
+                 + Domain-Helfer: match_score(), due_reminders(),
+                   Connection.between()/.active_for()/.involves()/.partner_of();
+                   berechnete Property User.streak; Spalte User.notify_email
+forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm, GoalForm,
+                          SearchForm, MessageForm, CheckinForm, SettingsForm,
+                          CoachGoalForm
+mailer.py        E-Mail-Notification (FA-10): send_email()/notify(), SMTP optional
+coach.py         KI-Coach (FA-11): sharpen_goal()/motivational_message() via
+                 Anthropic-API mit lokalem Offline-Fallback; datensparsam (NFA-09)
 seed.py          CLI: flask seed (10 Profile + Connections, Messages, Checkins)
 conftest.py      sys.path-Fix damit pytest das App-Paket im Repo-Root findet
 static/          style.css, Uploads (static/uploads/)
 templates/       Jinja2-Templates (landing, login, register, profile, edit_profile,
-                 goal_form, user_profile, search, chat)
+                 goal_form, user_profile, search, chat, settings, coach)
 doc/             ER-Modell (diagramms.md), Anforderungskatalog, Personas
-tests/           pytest-Tests (27 Tests: test_m2 + test_goals + test_m3 + test_m4 + test_m5)
+tests/           pytest-Tests (34 Tests: test_m2 + test_goals + test_m3 + test_m4
+                 + test_m5 + test_m6)
 ```

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}KI-Coach · Momentum{% endblock %}
+
+{% block content %}
+<div class="profile-grid">
+
+  <section class="card-soft">
+    <p class="section-eyebrow">KI-Coach</p>
+    <p class="text-muted-custom mb-3">
+      {% if checked_in_today %}
+        Stark – heute schon eingecheckt. Hol dir trotzdem einen Schub.
+      {% else %}
+        Heute noch nicht eingecheckt? Hol dir Motivation vom Coach.
+      {% endif %}
+    </p>
+    <form method="post" action="{{ url_for('main.coach_motivate') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ember">Motivation holen</button>
+    </form>
+    {% if motivation %}
+    <div class="coach-bubble mt-3">{{ motivation }}</div>
+    {% endif %}
+  </section>
+
+  <section class="card-soft">
+    <p class="section-eyebrow">Ziel schärfen</p>
+    <p class="text-muted-custom mb-3">
+      Formuliere ein vages Ziel – der Coach macht es konkreter und messbar.
+    </p>
+    <form method="post" action="{{ url_for('main.coach_sharpen') }}" class="checkin-form">
+      {{ form.hidden_tag() }}
+      {{ form.goal_text(class="form-control", rows="2", placeholder="z.B. mehr Sport machen") }}
+      {% for e in form.goal_text.errors %}
+      <span class="text-danger small">{{ e }}</span>
+      {% endfor %}
+      <button type="submit" class="btn btn-ember">Konkreter machen</button>
+    </form>
+    {% if suggestion %}
+    <div class="coach-bubble mt-3">
+      <p class="fact-label mb-1">Dein Ziel</p>
+      <p class="mb-2">{{ original }}</p>
+      <p class="fact-label mb-1">Vorschlag</p>
+      {{ suggestion }}
+    </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

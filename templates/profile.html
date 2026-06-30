@@ -44,6 +44,19 @@
   </section>
   {% endif %}
 
+  {% if reminders %}
+  <section class="card-soft" style="border-left:3px solid var(--ember)">
+    <p class="section-eyebrow">Fällige Erinnerungen ({{ reminders|length }})</p>
+    {% for goal in reminders %}
+    <div class="goal-item{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
+      <span class="pill">{{ goal.goal_category }}</span>
+      <p class="goal-text">{{ goal.goal_text }}</p>
+      <span class="fact-value">Geplant um {{ goal.preferred_checkin_time }} – jetzt einchecken.</span>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   <section class="card-soft">
     <p class="section-eyebrow">Check-in</p>
     {% if checked_in_today %}

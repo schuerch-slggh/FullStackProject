@@ -30,7 +30,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
 - [x] **M4** — Suche, Match-Algorithmus & Verbindung
 - [x] **M5** — 1:1-Chat & Check-in
-- [ ] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
+- [x] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
 - [ ] **M7** — UX-Politur & Zusatzfunktionen (Richtung 6.0)
 - [ ] **M8** — Testlauf, Test-Prozeduren, Bug-Liste, MySQL-Integration
 - [ ] **M9** — Abgabe (Git-Release, Video-Demo, Tagebuch)
@@ -247,17 +247,64 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   idempotent; ein „Allgemein"-Check-in (ohne Ziel) ist möglich.
 - **Next steps:** Sonderfunktionen (Check-in-Schedule, E-Mail, KI-Coach) → M6.
 
-### M6 — Sonderfunktionen · geplant
+### M6 — Sonderfunktionen · erledigt
 
-- **Ziel:** Die drei committeten Sonderfunktionen für die 4.0.
-- **Geplanter Umfang:** Check-in-Schedule mit Erinnerungen (FA-09);
-  E-Mail-Notification mit Ein/Aus-Schalter in den Einstellungen (FA-10);
-  KI-Coach über die Anthropic-API für Motivation und Zielschärfung (FA-11),
-  datensparsam (NFA-09).
-- **Deckt ab:** FA-09, FA-10, FA-11, NFA-09.
-- **Akzeptanz-Fokus:** Erinnerung wird zum fälligen Zeitpunkt ausgelöst; E-Mail bei
-  relevanten Ereignissen; KI schreibt ein vages Ziel konkreter um, ohne fremde
-  Chat-Inhalte oder Zugangsdaten zu übermitteln.
+- **Datum:** 30.06.2026
+- **Ziel:** Die drei committeten Sonderfunktionen für die 4.0 (Erinnerungen,
+  E-Mail-Notification, KI-Coach), datensparsam.
+- **Was geändert wurde:**
+  - `User.notify_email` (Boolean, default `True`) in `models.py`: Ein/Aus-Schalter
+    für E-Mail-Benachrichtigungen (FA-10 AK2).
+  - `due_reminders(user, *, now=None)` in `models.py` (FA-09): liefert Goals, deren
+    Check-in heute fällig und noch nicht erledigt ist. Der „Schedule" ist die
+    bestehende `frequency` + `preferred_checkin_time` des Goals (FA-09 AK1, kein
+    neues Entity / kein Hintergrundjob); ein Goal ist fällig, wenn eine
+    Check-in-Zeit gesetzt ist, diese heute überschritten wurde und kein Check-in
+    für das Goal existiert (FA-09 AK2). `now` ist injizierbar → deterministisch
+    testbar. Helfer `_parse_time()` für „HH:MM".
+  - `mailer.py` (neu): `send_email()` nutzt echtes SMTP, wenn `MAIL_SERVER`
+    gesetzt ist, sonst nur Log (App läuft ohne Mailserver). Unter `TESTING`
+    landet die Mail in einer In-Memory-Outbox (`EMAIL_OUTBOX`) für Assertions.
+    `notify(user, ...)` respektiert `user.notify_email` (FA-10 AK2).
+  - `coach.py` (neu, FA-11): `sharpen_goal()` (vages Ziel → konkreter, AK2) und
+    `motivational_message()` (motivierende Rückmeldung, AK1) über die
+    Anthropic-API (`claude-opus-4-8`). Ohne `ANTHROPIC_API_KEY` oder fehlendes
+    SDK greift ein deterministischer lokaler Fallback (offline-/testfähig). Die
+    Prompt-Builder (`sharpen_prompt`, `motivation_prompt`) senden ausschliesslich
+    Ziel-Text bzw. Streak-Zahl — keine Zugangsdaten, E-Mails oder fremden
+    Chat-Inhalte (NFA-09 AK1).
+  - `__init__.py`: `MAIL_*`-Config aus Env (`MAIL_SERVER`, `MAIL_PORT`,
+    `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SENDER`).
+  - `forms.py`: `SettingsForm` (notify_email) und `CoachGoalForm` (goal_text).
+  - `views.py`: Routen `GET/POST /settings`, `GET /coach`, `POST /coach/motivate`,
+    `POST /coach/sharpen`; `profile()` gibt `reminders=due_reminders(...)` mit;
+    `send_connection` und `chat` benachrichtigen den Empfänger/Partner per
+    `notify(...)` (FA-10 AK1; Nachrichteninhalt wird bewusst nicht mitgeschickt).
+    Helfer `_checked_in_today(user)`.
+  - Templates: `settings.html` und `coach.html` (neu); `profile.html` um
+    „Fällige Erinnerungen" ergänzt; `base.html` um Nav-Links „Coach" und
+    „Einstellungen".
+  - `static/style.css`: `.coach-bubble`.
+  - `requirements.txt`: `anthropic` (optionale Abhängigkeit; nur für den
+    Online-Coach nötig, App läuft ohne).
+  - `tests/test_m6.py` (neu): 7 Tests.
+- **How to run:** Schema-Reset nötig (neue Spalte `notify_email`):
+  `instance/app.db` löschen → `flask --app main seed` →
+  `flask --app main run --debug`. Erinnerungen erscheinen auf dem Profil, sobald
+  die Check-in-Zeit eines Ziels überschritten ist. KI-Coach unter „Coach";
+  E-Mail-Schalter unter „Einstellungen". Optional E-Mail real verschicken:
+  `MAIL_SERVER`/`MAIL_USERNAME`/`MAIL_PASSWORD` setzen. KI-Coach online:
+  `ANTHROPIC_API_KEY` setzen (sonst lokaler Fallback).
+- **How to test:** `pytest tests/ -v` → 34 passed (4 + 4 + 5 + 9 + 5 + 7).
+- **Deckt ab:** FA-09 (AK1–AK2), FA-10 (AK1–AK2), FA-11 (AK1–AK2), NFA-09 (AK1).
+- **Known issues / Entscheidungen:** Kein Hintergrund-Scheduler — Erinnerungen
+  werden beim Laden des Profils ausgewertet (in-App-Trigger), die E-Mail bei
+  fälligem Check-in (Teil von FA-10 AK1) ist daher nicht abgedeckt; abgedeckt
+  sind die Ereignisse „neue Nachricht" und „neue Verbindungsanfrage". „Fällig"
+  wird pro Kalendertag ab `preferred_checkin_time` bestimmt (keine
+  frequenz-genaue Wochentagslogik) — bewusste MVP-Vereinfachung. E-Mail ohne
+  `MAIL_SERVER` nur als Log; KI-Coach ohne Key über lokalen Fallback.
+- **Next steps:** UX-Politur & Zusatzfunktionen (Richtung 6.0) → M7.
 
 ### M7 — UX-Politur & Zusatzfunktionen · geplant
 
@@ -322,5 +369,18 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   (403 sonst, NFA-03) und erst bei `status == "active"` (404 solange `requested`,
   FA-06 AK2). GET zeigt den Verlauf, POST sendet — eine Route, Redirect nach dem
   Senden (PRG-Muster).
+- **Erinnerungen ohne Scheduler (M6):** `due_reminders` wird beim Laden des
+  Profils ausgewertet (in-App-Trigger). Bewusst kein Cron/Hintergrundjob — im
+  Stack nicht vorhanden und für den MVP nicht nötig. Der „Schedule" reuse-t
+  `frequency`/`preferred_checkin_time` des Goals (keine Duplikat-Entity).
+- **E-Mail datensparsam (M6):** Benachrichtigungen enthalten keinen
+  Nachrichtentext (NFA-03); ohne `MAIL_SERVER` wird nur geloggt, sodass die App
+  ohne Mailserver lauffähig bleibt. `notify()` respektiert `User.notify_email`.
+- **KI-Coach mit Fallback (M6):** Anthropic-API nur bei gesetztem
+  `ANTHROPIC_API_KEY`; sonst deterministischer lokaler Fallback. Prompts senden
+  nur Ziel-Text/Streak (NFA-09). `anthropic` ist optionale Abhängigkeit (lazy
+  import), damit Tests netzfrei bleiben und die App ohne Key läuft.
 - **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
   seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.
+  E-Mail bei fälligem Check-in (Teil von FA-10 AK1) bräuchte einen Scheduler →
+  optional in M7/M8.

@@ -295,3 +295,12 @@ textarea.form-control { min-height: 5rem; resize: vertical; }
 .chat-time { display: block; font-size: .68rem; color: var(--slate); margin-top: .25rem; }
 .chat-compose { display: flex; gap: .6rem; align-items: flex-end; }
 .chat-compose textarea { flex-grow: 1; resize: vertical; }
+
+/* ---- KI-Coach ---- */
+.coach-bubble {
+  background: var(--ember-tint);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: .8rem 1rem;
+  white-space: pre-wrap; word-break: break-word;
+}

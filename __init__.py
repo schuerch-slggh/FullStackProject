@@ -35,6 +35,15 @@ def create_app():
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
+    # E-Mail-Notification (FA-10): optionales SMTP. Ohne MAIL_SERVER wird nur
+    # geloggt, sodass die App ohne Mailserver lauffähig bleibt.
+    app.config["MAIL_SERVER"] = os.environ.get("MAIL_SERVER")
+    app.config["MAIL_PORT"] = int(os.environ.get("MAIL_PORT", "587"))
+    app.config["MAIL_USE_TLS"] = os.environ.get("MAIL_USE_TLS", "1") == "1"
+    app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
+    app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+    app.config["MAIL_SENDER"] = os.environ.get("MAIL_SENDER", "noreply@momentum.local")
+
     # Bind extensions to this app.
     db.init_app(app)
     csrf.init_app(app)

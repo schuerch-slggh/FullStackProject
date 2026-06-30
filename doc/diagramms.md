@@ -1,4 +1,4 @@
-# ER-Modell — Momentum (Stand M5)
+# ER-Modell — Momentum (Stand M6)
 
 Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 
@@ -15,6 +15,7 @@ Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 | int | age | | nullable |
 | string(80) | city | | nullable; Distanz-Filter via ILIKE |
 | text | bio | | nullable |
+| bool | notify_email | NOT NULL | default True; E-Mail-Notification an/aus (FA-10 AK2) |
 | datetime | created_at | | |
 
 Property (kein DB-Feld): `photo_url` → primäres Foto aus `Photo`; Fallback auf neuestes.
@@ -148,3 +149,11 @@ Alle aktiven Partnerschaften eines Nutzers, nach letzter Aktivität sortiert —
 ### `Connection.involves(user_id) → bool` · `Connection.partner_of(user) → User`
 
 `involves` ist das Zugriffs-Gate für den Chat (nur die beiden Partner, NFA-03 / FA-07 AK3). `partner_of` liefert den jeweils anderen Partner relativ zum angemeldeten Nutzer.
+
+### `due_reminders(user, *, now=None) → list[Goal]`
+
+Liefert die Goals, deren Check-in heute fällig und noch nicht erledigt ist (FA-09). Der „Schedule" ist die `frequency` + `preferred_checkin_time` des Goals (kein separates Entity). Ein Goal ist fällig, wenn eine Check-in-Zeit gesetzt ist, die aktuelle Uhrzeit sie überschritten hat und für das Goal heute kein `Checkin` existiert. `now` ist injizierbar (deterministisch testbar). In-App-Trigger ohne Hintergrundjob.
+
+## KI-Coach & E-Mail (kein DB-Feld)
+
+`coach.py` (FA-11): `sharpen_goal()`/`motivational_message()` über die Anthropic-API mit lokalem Offline-Fallback; die Prompts enthalten nur Ziel-Text bzw. Streak-Zahl (NFA-09). `mailer.py` (FA-10): `notify(user, …)` sendet nur, wenn `user.notify_email` gesetzt ist; ohne `MAIL_SERVER` wird nur geloggt.

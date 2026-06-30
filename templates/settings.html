@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen · Momentum{% endblock %}
+
+{% block content %}
+<div class="profile-grid">
+  <section class="card-soft">
+    <p class="section-eyebrow">Einstellungen</p>
+    <form method="post" action="{{ url_for('main.settings') }}">
+      {{ form.hidden_tag() }}
+      <div class="form-check mb-3">
+        {{ form.notify_email(class="form-check-input") }}
+        {{ form.notify_email.label(class="form-check-label") }}
+      </div>
+      <p class="text-muted-custom mb-3">
+        Wir benachrichtigen dich per E-Mail bei neuen Nachrichten und
+        Verbindungsanfragen. Chat-Inhalte werden dabei nicht mitgeschickt.
+      </p>
+      <button type="submit" class="btn btn-ember">Speichern</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

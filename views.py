@@ -8,8 +8,13 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import db
-from .models import User, Goal, Photo, Connection, Message, Checkin, match_score
-from .forms import EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm
+from .models import User, Goal, Photo, Connection, Message, Checkin, match_score, due_reminders
+from .forms import (
+    EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
+    SettingsForm, CoachGoalForm,
+)
+from .mailer import notify
+from .coach import sharpen_goal, motivational_message
 
 main_bp = Blueprint("main", __name__)
 
@@ -17,6 +22,12 @@ main_bp = Blueprint("main", __name__)
 def _goal_choices(user):
     """Check-in goal options: a general entry plus the user's own goals."""
     return [("", "Allgemein")] + [(str(g.id), g.goal_text) for g in user.goals]
+
+
+def _checked_in_today(user):
+    return Checkin.query.filter_by(
+        user_id=user.id, checkin_date=date.today()
+    ).first() is not None
 
 
 @main_bp.route("/")
@@ -35,16 +46,14 @@ def profile():
     partners = Connection.active_for(current_user.id)
     checkin_form = CheckinForm()
     checkin_form.goal.choices = _goal_choices(current_user)
-    checked_in_today = Checkin.query.filter_by(
-        user_id=current_user.id, checkin_date=date.today()
-    ).first() is not None
     return render_template(
         "profile.html",
         user=current_user,
         pending_requests=pending_requests,
         partners=partners,
         checkin_form=checkin_form,
-        checked_in_today=checked_in_today,
+        checked_in_today=_checked_in_today(current_user),
+        reminders=due_reminders(current_user),
     )
 
 
@@ -158,6 +167,13 @@ def send_connection(user_id):
         return redirect(url_for("main.user_profile", user_id=other.id))
     db.session.add(Connection(user1_id=current_user.id, user2_id=other.id, status="requested"))
     db.session.commit()
+    # FA-10 AK1: E-Mail bei neuem passendem Partner (Verbindungsanfrage).
+    notify(
+        other,
+        f"{current_user.name} möchte sich mit dir verbinden",
+        f"Hi {other.name}, {current_user.name} hat dir auf Momentum eine "
+        "Verbindungsanfrage gesendet.",
+    )
     flash(f"Verbindungsanfrage an {other.name} gesendet.", "success")
     return redirect(url_for("main.user_profile", user_id=other.id))
 
@@ -233,8 +249,74 @@ def chat(conn_id):
             text=form.text.data.strip(),
         ))
         db.session.commit()
+        # FA-10 AK1: E-Mail an den Partner bei neuer Nachricht. Der Inhalt der
+        # Nachricht wird bewusst nicht mitgeschickt (Datenschutz, NFA-03).
+        partner = conn.partner_of(current_user)
+        notify(
+            partner,
+            f"Neue Nachricht von {current_user.name}",
+            f"Hi {partner.name}, du hast auf Momentum eine neue Nachricht von "
+            f"{current_user.name}.",
+        )
         return redirect(url_for("main.chat", conn_id=conn.id))
 
     return render_template(
         "chat.html", conn=conn, partner=conn.partner_of(current_user), form=form,
+    )
+
+
+@main_bp.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    """Nutzereinstellungen — E-Mail-Notification an/aus (FA-10 AK2)."""
+    form = SettingsForm()
+    if form.validate_on_submit():
+        current_user.notify_email = form.notify_email.data
+        db.session.commit()
+        flash("Einstellungen gespeichert.", "success")
+        return redirect(url_for("main.settings"))
+    if request.method == "GET":
+        # Checkbox-Zustand für die Anzeige vorbelegen (nicht via obj, sonst
+        # bleibt ein abgewähltes Häkchen beim POST auf dem alten Wert).
+        form.notify_email.data = current_user.notify_email
+    return render_template("settings.html", form=form)
+
+
+@main_bp.route("/coach")
+@login_required
+def coach():
+    """KI-Coach-Seite: Motivation holen und Ziel schärfen (FA-11)."""
+    return render_template(
+        "coach.html", form=CoachGoalForm(),
+        checked_in_today=_checked_in_today(current_user),
+        motivation=None, suggestion=None, original=None,
+    )
+
+
+@main_bp.route("/coach/motivate", methods=["POST"])
+@login_required
+def coach_motivate():
+    """Motivierende Rückmeldung, abhängig vom Check-in-Status (FA-11 AK1)."""
+    goal_text = current_user.goals[0].goal_text if current_user.goals else None
+    message = motivational_message(current_user.streak, goal_text)
+    return render_template(
+        "coach.html", form=CoachGoalForm(),
+        checked_in_today=_checked_in_today(current_user),
+        motivation=message, suggestion=None, original=None,
+    )
+
+
+@main_bp.route("/coach/sharpen", methods=["POST"])
+@login_required
+def coach_sharpen():
+    """Schreibt ein vage formuliertes Ziel konkreter um (FA-11 AK2)."""
+    form = CoachGoalForm()
+    suggestion = original = None
+    if form.validate_on_submit():
+        original = form.goal_text.data.strip()
+        suggestion = sharpen_goal(original)
+    return render_template(
+        "coach.html", form=form,
+        checked_in_today=_checked_in_today(current_user),
+        motivation=None, suggestion=suggestion, original=original,
     )

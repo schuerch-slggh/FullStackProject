@@ -13,4 +13,5 @@ typing_extensions
 Werkzeug
 WTForms
 email-validator
+anthropic
 pytest

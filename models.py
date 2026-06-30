@@ -1,5 +1,5 @@
 """Database entities (ORM models) and domain helpers."""
-from datetime import datetime, date
+from datetime import datetime, date, time
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -25,6 +25,10 @@ class User(UserMixin, db.Model):
 
     # --- Free text ---
     bio = db.Column(db.Text)
+
+    # --- Settings ---
+    # E-Mail-Notification an/aus (FA-10 AK2); default an.
+    notify_email = db.Column(db.Boolean, default=True, nullable=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -254,3 +258,33 @@ def match_score(user_a: User, user_b: User) -> int:
     if times_a & times_b:
         score += 1
     return score
+
+
+def _parse_time(value: str) -> "time | None":
+    """Parse a preferred check-in time like '08:00' into a time, else None."""
+    try:
+        hh, mm = value.strip().split(":")
+        return time(int(hh), int(mm))
+    except (ValueError, AttributeError):
+        return None
+
+
+def due_reminders(user: User, *, now: datetime = None) -> "list[Goal]":
+    """Goals whose check-in is due now and not yet done today (FA-09).
+
+    The schedule is the goal's frequency + preferred check-in time (FA-09 AK1).
+    A goal counts as due (FA-09 AK2) when it has a preferred check-in time, that
+    time has passed for today, and no check-in exists for that goal today.
+    `now` is injectable so the trigger is deterministic and testable.
+    """
+    now = now or datetime.now()
+    today = now.date()
+    done_goal_ids = {c.goal_id for c in user.checkins if c.checkin_date == today}
+    due = []
+    for goal in user.goals:
+        if goal.id in done_goal_ids:
+            continue
+        scheduled = _parse_time(goal.preferred_checkin_time) if goal.preferred_checkin_time else None
+        if scheduled is not None and now.time() >= scheduled:
+            due.append(goal)
+    return due

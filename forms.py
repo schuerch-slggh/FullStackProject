@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import (
     StringField, PasswordField, SubmitField,
-    SelectField, IntegerField, TextAreaField,
+    SelectField, IntegerField, TextAreaField, BooleanField,
 )
 from wtforms.validators import (
     DataRequired, Email, Length, EqualTo, Optional, NumberRange, ValidationError,
@@ -108,3 +108,17 @@ class CheckinForm(FlaskForm):
     goal = SelectField("Ziel", validators=[Optional()])
     note = StringField("Notiz (optional)", validators=[Optional(), Length(max=280)])
     submit = SubmitField("Heute einchecken")
+
+
+class SettingsForm(FlaskForm):
+    """Nutzereinstellungen — E-Mail-Notification an/aus (FA-10 AK2)."""
+
+    notify_email = BooleanField("E-Mail-Benachrichtigungen aktivieren")
+    submit = SubmitField("Speichern")
+
+
+class CoachGoalForm(FlaskForm):
+    """Vages Ziel, das der KI-Coach konkreter formuliert (FA-11 AK2)."""
+
+    goal_text = TextAreaField("Dein Ziel", validators=[DataRequired(), Length(max=280)])
+    submit = SubmitField("Konkreter machen")
