@@ -58,6 +58,8 @@ MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 | `/connect/<id>` | Verbindungsanfrage senden (POST) |
 | `/connections/<id>/accept` | Anfrage annehmen (POST) |
 | `/connections/<id>/decline` | Anfrage ablehnen / zurückziehen (POST) |
+| `/chat/<id>` | 1:1-Chat einer aktiven Verbindung (GET zeigt Verlauf, POST sendet) |
+| `/checkin` | Check-in für heute markieren (POST) |
 
 ## Projektstruktur
 
@@ -66,16 +68,18 @@ __init__.py      App-Factory (create_app, CSRFProtect, DB, Login)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
 views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil,
-                            Suche (match_score), Verbindungen (send/accept/decline)
+                            Suche (match_score), Verbindungen (send/accept/decline),
+                            Chat (chat) und Check-in (checkin)
 models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin)
-                 + Domain-Helfer: match_score(), Connection.between()
+                 + Domain-Helfer: match_score(), Connection.between()/.active_for()/
+                   .involves()/.partner_of(); berechnete Property User.streak
 forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm,
-                          GoalForm, SearchForm
+                          GoalForm, SearchForm, MessageForm, CheckinForm
 seed.py          CLI: flask seed (10 Profile + Connections, Messages, Checkins)
 conftest.py      sys.path-Fix damit pytest das App-Paket im Repo-Root findet
 static/          style.css, Uploads (static/uploads/)
 templates/       Jinja2-Templates (landing, login, register, profile, edit_profile,
-                 goal_form, user_profile, search)
+                 goal_form, user_profile, search, chat)
 doc/             ER-Modell (diagramms.md), Anforderungskatalog, Personas
-tests/           pytest-Tests (22 Tests: test_m2 + test_goals + test_m3 + test_m4)
+tests/           pytest-Tests (27 Tests: test_m2 + test_goals + test_m3 + test_m4 + test_m5)
 ```

@@ -265,3 +265,33 @@ textarea.form-control { min-height: 5rem; resize: vertical; }
   text-decoration: none; padding: .25rem .5rem;
 }
 .nav-link-text:hover { color: var(--ink); }
+
+/* ---- Check-in & partners (profile) ---- */
+.checkin-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.checkin-form .form-control { flex: 1 1 10rem; }
+.partner-row {
+  display: flex; align-items: center; gap: .8rem;
+  text-decoration: none; color: var(--ink);
+}
+.partner-name { font-weight: 600; flex-grow: 1; }
+.partner-chat { color: var(--ember); font-weight: 600; font-size: .9rem; }
+.partner-row:hover .partner-name { color: var(--ember); }
+
+/* ---- Chat ---- */
+.chat-wrap { display: grid; gap: 1rem; max-width: 640px; margin: 0 auto; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; }
+.chat-partner { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: var(--ink); }
+.chat-partner-name {
+  font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 1.15rem;
+}
+.chat-thread { display: flex; flex-direction: column; gap: .6rem; }
+.chat-row { display: flex; }
+.chat-row.mine { justify-content: flex-end; }
+.chat-row.theirs { justify-content: flex-start; }
+.chat-bubble { max-width: 78%; padding: .55rem .8rem; border-radius: 14px; }
+.chat-row.theirs .chat-bubble { background: var(--surface); border: 1px solid var(--border); }
+.chat-row.mine .chat-bubble { background: var(--ember-tint); }
+.chat-text { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.chat-time { display: block; font-size: .68rem; color: var(--slate); margin-top: .25rem; }
+.chat-compose { display: flex; gap: .6rem; align-items: flex-end; }
+.chat-compose textarea { flex-grow: 1; resize: vertical; }

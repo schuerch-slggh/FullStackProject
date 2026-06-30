@@ -95,3 +95,16 @@ class SearchForm(FlaskForm):
     frequency = SelectField("Frequenz", choices=FREQUENCY_CHOICES)
     city = StringField("Stadt / Ort", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Suchen")
+
+
+class MessageForm(FlaskForm):
+    text = TextAreaField("Nachricht", validators=[DataRequired(), Length(max=2000)])
+    submit = SubmitField("Senden")
+
+
+class CheckinForm(FlaskForm):
+    """Mark a check-in for today. `goal.choices` is set per request in the view."""
+
+    goal = SelectField("Ziel", validators=[Optional()])
+    note = StringField("Notiz (optional)", validators=[Optional(), Length(max=280)])
+    submit = SubmitField("Heute einchecken")

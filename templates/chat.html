@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Chat mit {{ partner.name }} · Momentum{% endblock %}
+
+{% block content %}
+<div class="chat-wrap">
+
+  <section class="card-soft chat-head">
+    <a href="{{ url_for('main.user_profile', user_id=partner.id) }}" class="chat-partner">
+      <img class="avatar-sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
+      <span class="chat-partner-name">{{ partner.name }}</span>
+    </a>
+    <a href="{{ url_for('main.profile') }}" class="btn btn-ghost btn-sm">← Zurück</a>
+  </section>
+
+  <section class="card-soft chat-thread">
+    {% for msg in conn.messages %}
+      {% set mine = msg.sender_id == current_user.id %}
+      <div class="chat-row {{ 'mine' if mine else 'theirs' }}">
+        <div class="chat-bubble">
+          <p class="chat-text">{{ msg.text }}</p>
+          <span class="chat-time">{{ msg.sent_at.strftime("%d.%m. %H:%M") }}</span>
+        </div>
+      </div>
+    {% else %}
+      <p class="text-muted-custom">Noch keine Nachrichten. Schreib die erste!</p>
+    {% endfor %}
+  </section>
+
+  <form method="post" action="{{ url_for('main.chat', conn_id=conn.id) }}" class="card-soft chat-compose">
+    {{ form.hidden_tag() }}
+    <textarea name="text" class="form-control" rows="2" maxlength="2000"
+              placeholder="Nachricht an {{ partner.name }} …" required></textarea>
+    <button type="submit" class="btn btn-ember">Senden</button>
+  </form>
+
+</div>
+{% endblock %}

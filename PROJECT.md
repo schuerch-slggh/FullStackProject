@@ -29,7 +29,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
 - [x] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
 - [x] **M4** — Suche, Match-Algorithmus & Verbindung
-- [ ] **M5** — 1:1-Chat & Check-in
+- [x] **M5** — 1:1-Chat & Check-in
 - [ ] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
 - [ ] **M7** — UX-Politur & Zusatzfunktionen (Richtung 6.0)
 - [ ] **M8** — Testlauf, Test-Prozeduren, Bug-Liste, MySQL-Integration
@@ -203,15 +203,49 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   `active`-Connection ist die Voraussetzung dafür.
 - **Next steps:** 1:1-Chat & Check-in → M5.
 
-### M5 — 1:1-Chat & Check-in · geplant
+### M5 — 1:1-Chat & Check-in · erledigt
 
+- **Datum:** 30.06.2026
 - **Ziel:** Kommunikation und der wiederkehrende Kern-Loop.
-- **Geplanter Umfang:** 1:1-Textchat (chronologisch, mit Zeitstempel, nur für die
-  beiden Partner sichtbar); Check-in markieren, das den Streak erhöht bzw. bei
-  Auslassung zurücksetzt.
-- **Deckt ab:** FA-07, FA-08, NFA-03.
-- **Akzeptanz-Fokus:** Nachrichten bleiben nach Reload erhalten; Dritte können den
-  Chatverlauf nicht lesen; Check-in verändert den Streak korrekt.
+- **Was geändert wurde:**
+  - `User.streak`-**Spalte entfernt**, ersetzt durch eine berechnete Property
+    (Clean-Slate): längste Kette aufeinanderfolgender Tage mit Check-in, die heute
+    oder gestern endet. Ein neuer Check-in verlängert die Kette (FA-08 AK1), eine
+    Lücke setzt sie zurück (FA-08 AK2). Templates bleiben unverändert (nutzen
+    weiterhin `user.streak`), analog zur `photo_url`-Property.
+  - `Connection`-Helfer in `models.py`: `active_for(user_id)` (aktive
+    Partnerschaften), `involves(user_id)` (Zugriffs-Gate) und `partner_of(user)`
+    (anderer Partner).
+  - `MessageForm` und `CheckinForm` in `forms.py` (CheckinForm: optionales Ziel
+    als SelectField, dessen Choices pro Request im Controller gesetzt werden).
+  - Routen in `views.py`: `GET/POST /chat/<conn_id>` (Verlauf + Senden in einer
+    Route; 403 für Nicht-Partner, 404 solange die Verbindung nur `requested` ist)
+    und `POST /checkin` (Check-in für heute, dedupliziert pro Tag und Ziel).
+    `profile()` gibt jetzt aktive Partner, das Check-in-Formular und den
+    „heute-schon-eingecheckt"-Status mit.
+  - `templates/chat.html` (neu): Partner-Kopf, chronologische Sprechblasen mit
+    Zeitstempel (eigene rechts, fremde links), Sende-Formular.
+  - `templates/profile.html`: Check-in-Karte und „Meine Partner"-Liste (verlinkt
+    je Partner direkt in den Chat).
+  - `static/style.css`: Chat-, Partner- und Check-in-Stile.
+  - `auth.register`: `streak=0` entfernt (Spalte existiert nicht mehr).
+  - `seed.py`: erzeugt aus dem `streak`-Wert je Dummy eine Reihe
+    aufeinanderfolgender Check-ins (statt der bisherigen verstreuten Tage), damit
+    der berechnete Streak dem gewünschten Demo-Wert entspricht.
+  - `tests/test_m5.py` (neu): 5 Tests.
+- **How to run:** Schema-Reset nötig (User-Tabelle ohne `streak`-Spalte):
+  `instance/app.db` löschen → `flask --app main seed` → `flask --app main run --debug`.
+  Profil → „Heute einchecken" bzw. „Meine Partner" → Chat. (Eine vorhandene alte
+  DB läuft weiter, die zusätzliche `streak`-Spalte wird ignoriert — für korrekte
+  Demo-Streaks aber zurücksetzen.)
+- **How to test:** `pytest tests/ -v` → 27 passed (4 + 4 + 5 + 9 + 5).
+- **Deckt ab:** FA-07 (AK1–AK3), FA-08 (AK1–AK2), NFA-03 (AK1).
+- **Known issues / Entscheidungen:** Streak zählt Kalendertage, nicht
+  frequenz-abhängige „geplante" Tage — bewusste MVP-Vereinfachung (frequenz-genaue
+  Auswertung optional in M7). Chat ohne Live-Update (Reload nötig); Gesendet-/
+  Gelesen-/Online-Status ist FA-16 (→ M7). Check-in ist pro Tag und Ziel
+  idempotent; ein „Allgemein"-Check-in (ohne Ziel) ist möglich.
+- **Next steps:** Sonderfunktionen (Check-in-Schedule, E-Mail, KI-Coach) → M6.
 
 ### M6 — Sonderfunktionen · geplant
 
@@ -280,6 +314,13 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
 - **SearchForm CSRF deaktiviert:** GET-Formulare ändern keinen Zustand; CSRF
   schützt nur POST/PUT/DELETE. Alle zustandsändernden Verbindungs-Routen verwenden
   POST mit CSRF-Token.
+- **Streak als berechnete Property:** Statt eines gespeicherten Zählers wird der
+  Streak aus den `Checkin`-Datumswerten berechnet (Kette aufeinanderfolgender
+  Tage). Einzige Quelle der Wahrheit, kein Drift zwischen Zähler und Check-ins;
+  erfüllt FA-08 AK1/AK2 ohne Hintergrundjob.
+- **Chat-Gate:** `/chat/<conn_id>` ist nur für die beiden Partner erreichbar
+  (403 sonst, NFA-03) und erst bei `status == "active"` (404 solange `requested`,
+  FA-06 AK2). GET zeigt den Verlauf, POST sendet — eine Route, Redirect nach dem
+  Senden (PRG-Muster).
 - **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
   seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.
-  Chat-Route (M5) noch offen; `active`-Connection ist die Gate-Bedingung dafür.

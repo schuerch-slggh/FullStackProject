@@ -1,5 +1,5 @@
 """Database entities (ORM models) and domain helpers."""
-from datetime import datetime
+from datetime import datetime, date
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,7 +22,6 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(80), nullable=False)
     age = db.Column(db.Integer)
     city = db.Column(db.String(80))
-    streak = db.Column(db.Integer, default=0)
 
     # --- Free text ---
     bio = db.Column(db.Text)
@@ -65,6 +64,27 @@ class User(UserMixin, db.Model):
     def photo_url(self):
         primary = next((p for p in self.photos if p.is_primary), None)
         return primary.url if primary else (self.photos[-1].url if self.photos else None)
+
+    @property
+    def streak(self):
+        """Consecutive-day check-in streak (FA-08).
+
+        Counts back from the most recent check-in. A check-in today or
+        yesterday keeps the chain alive (so the streak does not drop to 0 just
+        because today's check-in is still pending); any larger gap breaks it
+        and the streak resets (FA-08 AK2). Each new daily check-in extends the
+        chain by one (FA-08 AK1).
+        """
+        days = sorted({c.checkin_date for c in self.checkins}, reverse=True)
+        if not days or (date.today() - days[0]).days > 1:
+            return 0
+        streak = 1
+        for newer, older in zip(days, days[1:]):
+            if (newer - older).days == 1:
+                streak += 1
+            else:
+                break
+        return streak
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -148,6 +168,22 @@ class Connection(db.Model):
                 db.and_(cls.user1_id == user_b_id, cls.user2_id == user_a_id),
             )
         ).first()
+
+    @classmethod
+    def active_for(cls, user_id: int) -> "list[Connection]":
+        """All active partnerships a user is part of, newest activity first."""
+        return cls.query.filter(
+            cls.status == "active",
+            db.or_(cls.user1_id == user_id, cls.user2_id == user_id),
+        ).order_by(cls.updated_at.desc()).all()
+
+    def involves(self, user_id: int) -> bool:
+        """True if the user is one of the two partners (access gate)."""
+        return user_id in (self.user1_id, self.user2_id)
+
+    def partner_of(self, user: "User") -> "User":
+        """The other partner relative to the given user."""
+        return self.user2 if self.user1_id == user.id else self.user1
 
     def __repr__(self):
         return f"<Connection {self.id} {self.user1_id}↔{self.user2_id} {self.status}>"

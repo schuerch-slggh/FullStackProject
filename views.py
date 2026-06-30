@@ -1,15 +1,22 @@
-"""Main controller: landing page, profile, goal management, search & connections."""
+"""Main controller: landing page, profile, goal management, search,
+connections, chat & check-in."""
 import os
+from datetime import date
 
 from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort, request
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import db
-from .models import User, Goal, Photo, Connection, match_score
-from .forms import EditProfileForm, GoalForm, SearchForm
+from .models import User, Goal, Photo, Connection, Message, Checkin, match_score
+from .forms import EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm
 
 main_bp = Blueprint("main", __name__)
+
+
+def _goal_choices(user):
+    """Check-in goal options: a general entry plus the user's own goals."""
+    return [("", "Allgemein")] + [(str(g.id), g.goal_text) for g in user.goals]
 
 
 @main_bp.route("/")
@@ -25,7 +32,20 @@ def profile():
     pending_requests = Connection.query.filter_by(
         user2_id=current_user.id, status="requested"
     ).all()
-    return render_template("profile.html", user=current_user, pending_requests=pending_requests)
+    partners = Connection.active_for(current_user.id)
+    checkin_form = CheckinForm()
+    checkin_form.goal.choices = _goal_choices(current_user)
+    checked_in_today = Checkin.query.filter_by(
+        user_id=current_user.id, checkin_date=date.today()
+    ).first() is not None
+    return render_template(
+        "profile.html",
+        user=current_user,
+        pending_requests=pending_requests,
+        partners=partners,
+        checkin_form=checkin_form,
+        checked_in_today=checked_in_today,
+    )
 
 
 @main_bp.route("/profile/edit", methods=["GET", "POST"])
@@ -165,3 +185,56 @@ def decline_connection(conn_id):
     db.session.commit()
     flash(f"Verbindungsanfrage mit {other_name} wurde zurückgezogen.", "info")
     return redirect(url_for("main.profile"))
+
+
+@main_bp.route("/checkin", methods=["POST"])
+@login_required
+def checkin():
+    form = CheckinForm()
+    form.goal.choices = _goal_choices(current_user)
+    if not form.validate_on_submit():
+        flash("Check-in konnte nicht gespeichert werden.", "danger")
+        return redirect(url_for("main.profile"))
+
+    goal_id = int(form.goal.data) if form.goal.data else None
+    today = date.today()
+    already = Checkin.query.filter_by(
+        user_id=current_user.id, checkin_date=today, goal_id=goal_id
+    ).first()
+    if already:
+        flash("Für heute ist hier bereits ein Check-in erfasst.", "info")
+        return redirect(url_for("main.profile"))
+
+    db.session.add(Checkin(
+        user_id=current_user.id,
+        goal_id=goal_id,
+        checkin_date=today,
+        note=(form.note.data.strip() or None) if form.note.data else None,
+    ))
+    db.session.commit()
+    flash("Check-in erfasst – weiter so!", "success")
+    return redirect(url_for("main.profile"))
+
+
+@main_bp.route("/chat/<int:conn_id>", methods=["GET", "POST"])
+@login_required
+def chat(conn_id):
+    conn = db.get_or_404(Connection, conn_id)
+    if not conn.involves(current_user.id):
+        abort(403)  # NFA-03 / FA-07 AK3: only the two partners may read the chat
+    if conn.status != "active":
+        abort(404)  # FA-06 AK2: chat is unlocked only after a mutual match
+
+    form = MessageForm()
+    if form.validate_on_submit():
+        db.session.add(Message(
+            connection_id=conn.id,
+            sender_id=current_user.id,
+            text=form.text.data.strip(),
+        ))
+        db.session.commit()
+        return redirect(url_for("main.chat", conn_id=conn.id))
+
+    return render_template(
+        "chat.html", conn=conn, partner=conn.partner_of(current_user), form=form,
+    )

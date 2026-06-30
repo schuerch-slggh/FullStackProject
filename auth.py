@@ -36,7 +36,6 @@ def register():
             age=form.age.data,
             city=form.city.data,
             bio=form.bio.data,
-            streak=0,
         )
         user.set_password(form.password.data)
         user.photos.append(Photo(

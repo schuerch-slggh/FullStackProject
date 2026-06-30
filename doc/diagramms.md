@@ -1,4 +1,4 @@
-# ER-Modell — Momentum (Stand M4)
+# ER-Modell — Momentum (Stand M5)
 
 Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 
@@ -14,11 +14,14 @@ Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 | string(80) | name | NOT NULL | |
 | int | age | | nullable |
 | string(80) | city | | nullable; Distanz-Filter via ILIKE |
-| int | streak | | default 0 |
 | text | bio | | nullable |
 | datetime | created_at | | |
 
 Property (kein DB-Feld): `photo_url` → primäres Foto aus `Photo`; Fallback auf neuestes.
+
+Property (kein DB-Feld): `streak` → längste Kette aufeinanderfolgender Tage mit
+Check-in, die heute oder gestern endet; eine Lücke setzt sie zurück (FA-08). Berechnet
+aus `Checkin.checkin_date`, daher kein gespeicherter Zähler.
 
 ---
 
@@ -137,3 +140,11 @@ Vergleich per Mengenüberschneidung (Set-Intersection) aller Goals beider Nutzer
 ### `Connection.between(user_a_id, user_b_id) → Connection | None`
 
 Findet die Connection zwischen zwei Nutzern unabhängig davon, wer `user1` (Initiator) und wer `user2` (Empfänger) ist. Gibt `None` zurück, wenn keine Verbindung existiert.
+
+### `Connection.active_for(user_id) → list[Connection]`
+
+Alle aktiven Partnerschaften eines Nutzers, nach letzter Aktivität sortiert — Datenbasis für die Partner-/Chat-Liste auf dem Profil.
+
+### `Connection.involves(user_id) → bool` · `Connection.partner_of(user) → User`
+
+`involves` ist das Zugriffs-Gate für den Chat (nur die beiden Partner, NFA-03 / FA-07 AK3). `partner_of` liefert den jeweils anderen Partner relativ zum angemeldeten Nutzer.

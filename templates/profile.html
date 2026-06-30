@@ -45,6 +45,36 @@
   {% endif %}
 
   <section class="card-soft">
+    <p class="section-eyebrow">Check-in</p>
+    {% if checked_in_today %}
+      <p class="text-muted-custom mb-3">✓ Heute schon eingecheckt. Streak: {{ user.streak }} Tage.</p>
+    {% else %}
+      <p class="text-muted-custom mb-3">Heute noch nicht eingecheckt – halte deinen Streak am Leben.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.checkin') }}" class="checkin-form">
+      {{ checkin_form.hidden_tag() }}
+      {{ checkin_form.goal(class="form-control") }}
+      {{ checkin_form.note(class="form-control", placeholder="Notiz (optional)") }}
+      <button type="submit" class="btn btn-ember">Heute einchecken</button>
+    </form>
+  </section>
+
+  {% if partners %}
+  <section class="card-soft">
+    <p class="section-eyebrow">Meine Partner</p>
+    {% for conn in partners %}
+      {% set partner = conn.partner_of(current_user) %}
+      <a href="{{ url_for('main.chat', conn_id=conn.id) }}"
+         class="partner-row{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
+        <img class="avatar-sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
+        <span class="partner-name">{{ partner.name }}</span>
+        <span class="partner-chat">Chat →</span>
+      </a>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="card-soft">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <p class="section-eyebrow mb-0">Meine Commitments</p>
       <a href="{{ url_for('main.add_goal') }}" class="btn btn-ember btn-sm">+ Hinzufügen</a>

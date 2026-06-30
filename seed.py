@@ -139,25 +139,19 @@ _MESSAGES = [
     (2, "jonas.weber@example.com", "Nice. Ich hab 3 Stunden am Projekt gebaut.", 1),
 ]
 
-# email → list of days-ago values for checkins
-_CHECKIN_DAYS = {
-    "anna.keller@example.com":  [1, 2, 3],
-    "luca.bianchi@example.com": [1, 3, 4],
-    "sara.meier@example.com":   [0, 1, 2],
-    "jonas.weber@example.com":  [1, 2, 5],
-    "mara.fischer@example.com": [0, 2, 4],
-    "david.huber@example.com":  [1, 3, 6],
-}
-
-
 def seed_db():
     db.create_all()
     if User.query.first():
         return 0
 
     # --- Users, Goals, Photos ---
+    # The `streak` value in each dummy drives a run of consecutive daily
+    # check-ins below; the streak itself is computed from those (no column).
+    streaks = {}
     for entry in DUMMIES:
-        user = User(**entry["user"])
+        udata = dict(entry["user"])
+        streaks[udata["email"]] = udata.pop("streak", 0)
+        user = User(**udata)
         user.set_password(DEMO_PASSWORD)
         user.photos.append(Photo(url=entry["photo"], is_primary=True))
         for g in entry["goals"]:
@@ -195,11 +189,12 @@ def seed_db():
         )
         db.session.add(msg)
 
-    # --- Checkins ---
+    # --- Checkins: a run of consecutive days (today backwards) per user,
+    # so the computed streak matches the intended demo value. ---
     today_date = _date.today()
-    for email, days_list in _CHECKIN_DAYS.items():
+    for email, streak in streaks.items():
         u = users[email]
-        for d in days_list:
+        for d in range(streak):
             db.session.add(Checkin(
                 user_id=u.id,
                 checkin_date=today_date - timedelta(days=d),
