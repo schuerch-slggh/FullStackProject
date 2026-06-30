@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import db
-from .models import User, Goal
+from .models import User, Goal, Photo
 from .forms import EditProfileForm, GoalForm
 
 main_bp = Blueprint("main", __name__)
@@ -40,7 +40,13 @@ def edit_profile():
             filename = secure_filename(f"{current_user.id}_{photo_file.filename}")
             upload_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
             photo_file.save(upload_path)
-            current_user.photo_url = url_for("static", filename=f"uploads/{filename}")
+            for p in current_user.photos:
+                p.is_primary = False
+            db.session.add(Photo(
+                user_id=current_user.id,
+                url=url_for("static", filename=f"uploads/{filename}"),
+                is_primary=True,
+            ))
 
         db.session.commit()
         flash("Profil gespeichert.", "success")

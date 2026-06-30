@@ -24,17 +24,47 @@ class User(UserMixin, db.Model):
     city = db.Column(db.String(80))
     streak = db.Column(db.Integer, default=0)
 
-    # --- Free text + photo ---
+    # --- Free text ---
     bio = db.Column(db.Text)
-    photo_url = db.Column(db.String(300))
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # --- Relationships ---
     goals = db.relationship(
         "Goal", back_populates="user",
         order_by="Goal.created_at",
         cascade="all, delete-orphan",
     )
+    photos = db.relationship(
+        "Photo", back_populates="user",
+        order_by="Photo.uploaded_at",
+        cascade="all, delete-orphan",
+    )
+    checkins = db.relationship(
+        "Checkin", back_populates="user",
+        order_by="Checkin.checkin_date",
+        cascade="all, delete-orphan",
+    )
+    connections_sent = db.relationship(
+        "Connection",
+        foreign_keys="Connection.user1_id",
+        back_populates="user1",
+    )
+    connections_received = db.relationship(
+        "Connection",
+        foreign_keys="Connection.user2_id",
+        back_populates="user2",
+    )
+    messages_sent = db.relationship(
+        "Message",
+        foreign_keys="Message.sender_id",
+        back_populates="sender",
+    )
+
+    @property
+    def photo_url(self):
+        primary = next((p for p in self.photos if p.is_primary), None)
+        return primary.url if primary else (self.photos[-1].url if self.photos else None)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -60,6 +90,97 @@ class Goal(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", back_populates="goals")
+    checkins = db.relationship("Checkin", back_populates="goal")
 
     def __repr__(self):
         return f"<Goal {self.id} user={self.user_id} {self.goal_category}>"
+
+
+class Photo(db.Model):
+    """A profile photo belonging to a user."""
+
+    __tablename__ = "photo"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    url = db.Column(db.String(300), nullable=False)
+    is_primary = db.Column(db.Boolean, default=False, nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", back_populates="photos")
+
+    def __repr__(self):
+        return f"<Photo {self.id} user={self.user_id} primary={self.is_primary}>"
+
+
+class Connection(db.Model):
+    """An accountability partnership between two users."""
+
+    __tablename__ = "connection"
+    __table_args__ = (
+        db.UniqueConstraint("user1_id", "user2_id", name="uq_connection_pair"),
+        db.Index("ix_connection_user1_status", "user1_id", "status"),
+        db.Index("ix_connection_user2_status", "user2_id", "status"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    # user1 is the initiator, user2 is the receiver
+    user1_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user2_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="requested")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user1 = db.relationship("User", foreign_keys=[user1_id], back_populates="connections_sent")
+    user2 = db.relationship("User", foreign_keys=[user2_id], back_populates="connections_received")
+    messages = db.relationship(
+        "Message", back_populates="connection",
+        order_by="Message.sent_at",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self):
+        return f"<Connection {self.id} {self.user1_id}↔{self.user2_id} {self.status}>"
+
+
+class Message(db.Model):
+    """A single chat message within a connection."""
+
+    __tablename__ = "message"
+    __table_args__ = (
+        db.Index("ix_message_conn_time", "connection_id", "sent_at"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    connection_id = db.Column(db.Integer, db.ForeignKey("connection.id"), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    text = db.Column(db.Text, nullable=False)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    connection = db.relationship("Connection", back_populates="messages")
+    sender = db.relationship("User", foreign_keys=[sender_id], back_populates="messages_sent")
+
+    def __repr__(self):
+        return f"<Message {self.id} conn={self.connection_id} from={self.sender_id}>"
+
+
+class Checkin(db.Model):
+    """A daily accountability check-in by a user."""
+
+    __tablename__ = "checkin"
+    __table_args__ = (
+        db.Index("ix_checkin_user_date", "user_id", "checkin_date"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    goal_id = db.Column(db.Integer, db.ForeignKey("goal.id"), nullable=True, index=True)
+    checkin_date = db.Column(db.Date, nullable=False)
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", back_populates="checkins")
+    goal = db.relationship("Goal", back_populates="checkins")
+
+    def __repr__(self):
+        return f"<Checkin {self.id} user={self.user_id} date={self.checkin_date}>"

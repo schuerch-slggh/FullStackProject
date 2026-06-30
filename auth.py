@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
 from . import db
-from .models import User, Goal
+from .models import User, Goal, Photo
 from .forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint("auth", __name__)
@@ -36,10 +36,13 @@ def register():
             age=form.age.data,
             city=form.city.data,
             bio=form.bio.data,
-            photo_url=f"https://i.pravatar.cc/300?u={email}",
             streak=0,
         )
         user.set_password(form.password.data)
+        user.photos.append(Photo(
+            url=f"https://i.pravatar.cc/300?u={email}",
+            is_primary=True,
+        ))
         user.goals.append(Goal(
             goal_category=form.goal_category.data,
             goal_text=form.goal_text.data,

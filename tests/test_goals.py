@@ -40,7 +40,6 @@ def test_delete_other_users_goal_forbidden(app, client, test_user):
         other = User(
             email="other@example.com",
             name="Other User",
-            photo_url="https://i.pravatar.cc/300?u=other@example.com",
         )
         other.set_password("passwort123")
         db.session.add(other)

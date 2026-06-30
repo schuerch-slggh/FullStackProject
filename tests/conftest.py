@@ -1,6 +1,6 @@
 import pytest
 from FullStackProject import create_app, db as _db
-from FullStackProject.models import User, Goal
+from FullStackProject.models import User, Goal, Photo
 
 
 @pytest.fixture()
@@ -27,12 +27,9 @@ def client(app):
 @pytest.fixture()
 def test_user(app):
     with app.app_context():
-        user = User(
-            email="test@example.com",
-            name="Test User",
-            photo_url="https://i.pravatar.cc/300?u=test@example.com",
-        )
+        user = User(email="test@example.com", name="Test User")
         user.set_password("passwort123")
+        user.photos.append(Photo(url="https://i.pravatar.cc/300?u=test@example.com", is_primary=True))
         user.goals.append(Goal(goal_category="Sport", goal_text="Jeden Tag laufen"))
         _db.session.add(user)
         _db.session.commit()

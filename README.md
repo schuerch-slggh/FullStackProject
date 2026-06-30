@@ -62,10 +62,10 @@ __init__.py      App-Factory (create_app, CSRFProtect, DB, Login)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
 views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil
-models.py        SQLAlchemy-Entities (User, Goal)
+models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin)
 forms.py         WTForms (Login, Registrierung, Profil bearbeiten, GoalForm)
-seed.py          CLI: flask seed
+seed.py          CLI: flask seed (10 Profile + Connections, Messages, Checkins)
 static/          CSS, Uploads (static/uploads/)
 templates/       Jinja2-Templates
-tests/           pytest-Tests (8 Tests, test_m2 + test_goals)
+tests/           pytest-Tests (13 Tests, test_m2 + test_goals + test_m3)
 ```

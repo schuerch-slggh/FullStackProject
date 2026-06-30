@@ -27,7 +27,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M0** — Setup & vertikaler Durchstich (Login + persönliches Profil)
 - [x] **M1** — Startseite & Registrierung (User selbst anlegen)
 - [x] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
-- [ ] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
+- [x] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
 - [ ] **M4** — Suche, Match-Algorithmus & Verbindung
 - [ ] **M5** — 1:1-Chat & Check-in
 - [ ] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
@@ -129,17 +129,45 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   neu anlegen) — reicht für MVP; Edit-Route optional in M7.
 - **Next steps:** Vollständiges Datenmodell (Connection, Message, Checkin) → M3.
 
-### M3 — Vollständiges Datenmodell · geplant
+### M3 — Vollständiges Datenmodell · erledigt
 
-- **Ziel:** ER-Modell um die verbleibenden Grundfunktions-Entities erweitern.
-- **Geplanter Umfang:** `Connection` (Match/Partnerschaft mit Status
-  angefragt/aktiv), `Message` (Chat 1:1), `Checkin` (mit Datum und User-FK).
-  Beziehungen, Indizes und Foreign Keys. `Goal` (1:n zu User) und `photo_url`
-  auf `User` wurden bereits im Commitment-Feature umgesetzt. Kein separates
-  `Photo`-Modell nötig. Schema-Reset statt Migrationen (Prototyp-Phase).
-- **Deckt ab:** NFA-01 (Datenbasis für Match, Chat, Check-in).
-- **Akzeptanz-Fokus:** Alle Grundfunktions-Entities vorhanden und über das ORM
-  abfragbar.
+- **Datum:** 30.06.2026
+- **Ziel:** ER-Modell um alle verbleibenden Grundfunktions-Entities erweitern;
+  Foto-Ablage sauber in eine eigene Entity überführen.
+- **Was geändert wurde:**
+  - `Photo`-Entity (neu): 1:n zu User, Felder `url`, `is_primary`, `uploaded_at`;
+    ersetzt die `photo_url`-Spalte auf `User` vollständig (Clean-Slate-Regel).
+    `User.photo_url` bleibt als Python-Property erhalten, sodass Templates
+    unverändert bleiben.
+  - `Connection`-Entity (neu): zwei User-FKs (`user1_id` Initiator, `user2_id`
+    Empfänger), Status `requested`/`active`, `UniqueConstraint` auf dem Paar,
+    zusammengesetzte Indizes auf `(user1_id, status)` und `(user2_id, status)`.
+  - `Message`-Entity (neu): FK auf Connection und sender (User), `text`, `sent_at`
+    (indiziert), zusammengesetzter Index `(connection_id, sent_at)`.
+  - `Checkin`-Entity (neu): User-FK (mandatory), Goal-FK (nullable), `checkin_date`
+    (Date), `note`, zusammengesetzter Index `(user_id, checkin_date)`.
+  - `User`: `photo_url`-Spalte entfernt; Relationships auf `Photo`, `Checkin`,
+    `connections_sent`, `connections_received`, `messages_sent` ergänzt.
+  - `Goal`: Relationship auf `Checkin` ergänzt.
+  - `views.py`: `edit_profile` legt beim Foto-Upload ein `Photo`-Objekt an statt
+    direkt `user.photo_url` zu setzen; alte primäre Fotos werden dabei demarkiert.
+  - `seed.py`: `photo_url` aus User-Dicts entfernt, stattdessen `Photo`-Objekte;
+    Demo-Daten für 4 Connections (3 aktiv, 1 angefragt), 9 Messages auf aktiven
+    Connections, Checkins für 6 User über die letzten 7 Tage.
+  - `tests/conftest.py`: `test_user`-Fixture erstellt Photo-Objekt statt
+    `photo_url`-Kwarg.
+  - `tests/test_goals.py`: `photo_url`-Kwarg beim Hilfs-User entfernt.
+  - `tests/test_m3.py` (neu): 5 Tests.
+- **How to run:** Schema-Reset nötig (neue Tabellen): `rm instance/app.db` →
+  `flask --app main seed` → `flask --app main run --debug`.
+- **How to test:** `pytest tests/ -v` → 13 passed (test_goals 4 + test_m2 4 +
+  test_m3 5).
+- **Deckt ab:** NFA-01 (Datenbasis für Match, Chat, Check-in vollständig).
+- **Known issues / Entscheidungen:** Foto-Upload speichert weiterhin lokal in
+  `static/uploads/`; `photo_url`-Property gibt das primäre Foto zurück, bei keinem
+  primären das neueste. Goal-FK auf Checkin ist nullable — ein Check-in muss keinem
+  konkreten Ziel zugeordnet sein. Migrationen weiterhin aufgeschoben (Prototyp-Phase).
+- **Next steps:** Suche, Match-Algorithmus & Verbindung → M4.
 
 ### M4 — Suche, Match-Algorithmus & Verbindung · geplant
 
