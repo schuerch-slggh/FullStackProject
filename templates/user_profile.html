@@ -21,6 +21,39 @@
     </div>
   </section>
 
+  {% if user.id != current_user.id %}
+  <section class="card-soft">
+    {% if connection is none %}
+      <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ember">Verbindung anfragen</button>
+      </form>
+    {% elif connection.status == "requested" %}
+      {% if connection.user1_id == current_user.id %}
+        <p class="text-muted-custom mb-2">Anfrage wurde gesendet – auf Bestätigung warten.</p>
+        <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-sm">Anfrage zurückziehen</button>
+        </form>
+      {% else %}
+        <p class="text-muted-custom mb-2">{{ user.name }} möchte sich mit dir verbinden.</p>
+        <div class="d-flex gap-2">
+          <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ember">Annehmen</button>
+          </form>
+          <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost">Ablehnen</button>
+          </form>
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="mb-0" style="color:#1a7f37;font-weight:600">✓ Ihr seid verbunden</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <section class="card-soft">
     <p class="section-eyebrow">Commitments</p>
     {% for goal in user.goals %}

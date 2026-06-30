@@ -1,13 +1,13 @@
-"""Main controller: landing page, profile, goal management."""
+"""Main controller: landing page, profile, goal management, search & connections."""
 import os
 
-from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort, request
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import db
-from .models import User, Goal, Photo
-from .forms import EditProfileForm, GoalForm
+from .models import User, Goal, Photo, Connection, match_score
+from .forms import EditProfileForm, GoalForm, SearchForm
 
 main_bp = Blueprint("main", __name__)
 
@@ -22,7 +22,10 @@ def index():
 @main_bp.route("/profile")
 @login_required
 def profile():
-    return render_template("profile.html", user=current_user)
+    pending_requests = Connection.query.filter_by(
+        user2_id=current_user.id, status="requested"
+    ).all()
+    return render_template("profile.html", user=current_user, pending_requests=pending_requests)
 
 
 @main_bp.route("/profile/edit", methods=["GET", "POST"])
@@ -90,4 +93,75 @@ def delete_goal(goal_id):
 @login_required
 def user_profile(user_id):
     user = db.get_or_404(User, user_id)
-    return render_template("user_profile.html", user=user)
+    connection = Connection.between(current_user.id, user_id)
+    return render_template("user_profile.html", user=user, connection=connection)
+
+
+@main_bp.route("/search")
+@login_required
+def search():
+    form = SearchForm(request.args)
+    results = []
+    searched = "submit" in request.args
+
+    if searched and form.validate():
+        query = User.query.filter(User.id != current_user.id)
+
+        if form.category.data or form.frequency.data:
+            query = query.join(Goal)
+            if form.category.data:
+                query = query.filter(Goal.goal_category == form.category.data)
+            if form.frequency.data:
+                query = query.filter(Goal.frequency == form.frequency.data)
+
+        if form.city.data and form.city.data.strip():
+            query = query.filter(User.city.ilike(f"%{form.city.data.strip()}%"))
+
+        users = query.distinct().all()
+        scored = [
+            (u, match_score(current_user, u), Connection.between(current_user.id, u.id))
+            for u in users
+        ]
+        results = sorted(scored, key=lambda x: x[1], reverse=True)
+
+    return render_template("search.html", form=form, results=results, searched=searched)
+
+
+@main_bp.route("/connect/<int:user_id>", methods=["POST"])
+@login_required
+def send_connection(user_id):
+    other = db.get_or_404(User, user_id)
+    if other.id == current_user.id:
+        abort(400)
+    if Connection.between(current_user.id, other.id):
+        flash("Es besteht bereits eine Verbindungsanfrage oder -partnerschaft.", "info")
+        return redirect(url_for("main.user_profile", user_id=other.id))
+    db.session.add(Connection(user1_id=current_user.id, user2_id=other.id, status="requested"))
+    db.session.commit()
+    flash(f"Verbindungsanfrage an {other.name} gesendet.", "success")
+    return redirect(url_for("main.user_profile", user_id=other.id))
+
+
+@main_bp.route("/connections/<int:conn_id>/accept", methods=["POST"])
+@login_required
+def accept_connection(conn_id):
+    conn = db.get_or_404(Connection, conn_id)
+    if conn.user2_id != current_user.id or conn.status != "requested":
+        abort(403)
+    conn.status = "active"
+    db.session.commit()
+    flash(f"Verbindung mit {conn.user1.name} ist jetzt aktiv!", "success")
+    return redirect(url_for("main.profile"))
+
+
+@main_bp.route("/connections/<int:conn_id>/decline", methods=["POST"])
+@login_required
+def decline_connection(conn_id):
+    conn = db.get_or_404(Connection, conn_id)
+    if current_user.id not in (conn.user1_id, conn.user2_id):
+        abort(403)
+    other_name = conn.user1.name if conn.user2_id == current_user.id else conn.user2.name
+    db.session.delete(conn)
+    db.session.commit()
+    flash(f"Verbindungsanfrage mit {other_name} wurde zurückgezogen.", "info")
+    return redirect(url_for("main.profile"))

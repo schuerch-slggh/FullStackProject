@@ -8,7 +8,7 @@ passende Partner, verbinden sich, chatten 1:1 und halten sich per Check-in
 gegenseitig auf Kurs. Geplante Sonderfunktionen: Check-in-Schedule/Erinnerungen,
 E-Mail-Notification und ein KI-Coach.
 
-Quelle der Wahrheit für den Funktionsumfang ist `docs/anforderungskatalog.md`
+Quelle der Wahrheit für den Funktionsumfang ist `doc/anforderungskatalog.md`
 (FA-01…FA-16, NFA-01…NFA-09, MoSCoW-priorisiert). Die Meilensteine unten
 referenzieren diese IDs.
 
@@ -28,7 +28,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M1** — Startseite & Registrierung (User selbst anlegen)
 - [x] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
 - [x] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
-- [ ] **M4** — Suche, Match-Algorithmus & Verbindung
+- [x] **M4** — Suche, Match-Algorithmus & Verbindung
 - [ ] **M5** — 1:1-Chat & Check-in
 - [ ] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
 - [ ] **M7** — UX-Politur & Zusatzfunktionen (Richtung 6.0)
@@ -169,16 +169,39 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   konkreten Ziel zugeordnet sein. Migrationen weiterhin aufgeschoben (Prototyp-Phase).
 - **Next steps:** Suche, Match-Algorithmus & Verbindung → M4.
 
-### M4 — Suche, Match-Algorithmus & Verbindung · geplant
+### M4 — Suche, Match-Algorithmus & Verbindung · erledigt
 
+- **Datum:** 30.06.2026
 - **Ziel:** Partner finden, bewerten und verbinden.
-- **Geplanter Umfang:** Parametrische Suche (Zielkategorie, Frequenz, Distanz) mit
-  verständlicher Leer-Meldung; Match-Score aus Zielkategorie + Frequenz +
-  Überlappung der Check-in-Zeiten, absteigend sortiert, nie der eigene Account;
-  Match-Anfrage senden/annehmen, Chat erst nach beidseitiger Bestätigung.
-- **Deckt ab:** FA-04, FA-05, FA-06; optional FA-14 (Distanzgewichtung); NFA-05.
-- **Akzeptanz-Fokus:** Ergebnisliste erfüllt alle Filter; Selbst-Match
-  ausgeschlossen; Chat-Freischaltung erst bei aktivem Match.
+- **Was geändert wurde:**
+  - `match_score(user_a, user_b)` in `models.py`: Domain-Funktion auf Modulebene.
+    Score 0–4: +2 Kategorie-Überlappung, +1 Frequenz-Überlappung, +1 Check-in-Zeit-Überlappung.
+  - `Connection.between(user_a_id, user_b_id)` in `models.py`: findet eine
+    Connection unabhängig von der Richtung (user1/user2).
+  - `SearchForm` in `forms.py`: SelectField für Kategorie + Frequenz, StringField
+    für Stadt/Ort; CSRF deaktiviert (GET-Formular).
+  - `FREQUENCY_CHOICES` in `forms.py`: gemeinsame Frequenz-Auswahl.
+  - Neue Routen in `views.py`: `GET /search`, `POST /connect/<user_id>`,
+    `POST /connections/<conn_id>/accept`, `POST /connections/<conn_id>/decline`.
+  - `profile()` gibt jetzt `pending_requests` (eingehende Anfragen) mit.
+  - `user_profile()` gibt `connection` (aktueller Verbindungsstatus) mit.
+  - `templates/search.html` (neu): Suchformular + scorierte Ergebnisliste +
+    Verbinden/Annehmen/Ablehnen-Buttons, Leer-Meldung.
+  - `templates/profile.html`: Abschnitt für eingehende Verbindungsanfragen.
+  - `templates/user_profile.html`: Verbindungsstatus und Aktionsbuttons.
+  - `templates/base.html`: Nav um „Suche"- und „Profil"-Links erweitert.
+  - `static/style.css`: `.avatar-sm`, `.score-badge`, `.pill-success`,
+    `.nav-link-text`.
+  - `tests/test_m4.py` (neu): 9 Tests.
+- **How to run:** `flask --app main seed` → `flask --app main run --debug` →
+  einloggen → „Suche" in der Nav → Filter setzen → Verbinden-Button.
+- **How to test:** `pytest tests/ -v` → 22 passed (4 + 4 + 5 + 9).
+- **Deckt ab:** FA-04 (AK1–AK3), FA-05 (AK1–AK3), FA-06 (AK1–AK2), NFA-05.
+- **Known issues / Entscheidungen:** „Distanz" ist City-Substring-Match (kein
+  Geocoding). Frequenz-Filter exakter Match auf SelectField-Werte — Nutzer mit
+  Freitext-Frequenz erscheinen ggf. nicht. Chat-Route (M5) noch offen; die
+  `active`-Connection ist die Voraussetzung dafür.
+- **Next steps:** 1:1-Chat & Check-in → M5.
 
 ### M5 — 1:1-Chat & Check-in · geplant
 
@@ -245,5 +268,18 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   `DATABASE_URL`, ohne Code-Änderung (NFA-01).
 - **Schema-Reset statt Migrationen** in der Prototyp-Phase (laut `ClaudeCode.md`),
   bis Persistenz-Stabilität explizit gefordert ist.
+- **Distanz-Filter als City-Match:** Kein Geocoding; `/search`-Filter „Stadt/Ort"
+  macht einen ILIKE-Substring-Match auf `User.city`. FA-14 (Distanzgewichtung im
+  Score) bleibt für M7 offen.
+- **Frequenz-Suche als exakter Match:** `SearchForm.frequency` ist ein SelectField
+  mit festen Werten; die Suche filtert exakt. Nutzer mit abweichendem Freitext in
+  `Goal.frequency` erscheinen nicht — bewusster Trade-off für klare UX.
+- **match_score in models.py:** Domain-Logik gehört weder in den Controller noch
+  in eine separate Service-Schicht (nicht im Stack vorhanden). Als Modul-Funktion
+  direkt neben den Entities, da sie ausschliesslich auf Goal-Sets operiert.
+- **SearchForm CSRF deaktiviert:** GET-Formulare ändern keinen Zustand; CSRF
+  schützt nur POST/PUT/DELETE. Alle zustandsändernden Verbindungs-Routen verwenden
+  POST mit CSRF-Token.
 - **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
   seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.
+  Chat-Route (M5) noch offen; `active`-Connection ist die Gate-Bedingung dafür.

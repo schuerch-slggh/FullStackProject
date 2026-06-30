@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Partner suchen · Momentum{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;">
+
+  <h1 class="profile-name mb-1">Partner finden</h1>
+  <p class="text-muted-custom mb-4">Filtere nach Kategorie, Frequenz oder Stadt — sortiert nach Übereinstimmung.</p>
+
+  <div class="card-soft mb-4">
+    <form method="get" action="{{ url_for('main.search') }}" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">{{ form.category.label.text }}</label>
+        {{ form.category(class="form-select") }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">{{ form.frequency.label.text }}</label>
+        {{ form.frequency(class="form-select") }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">{{ form.city.label.text }}</label>
+        {{ form.city(class="form-control", placeholder="z.B. Zürich") }}
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        {{ form.submit(class="btn btn-ember w-100") }}
+      </div>
+    </form>
+  </div>
+
+  {% if searched %}
+    {% if results %}
+      <p class="text-muted-custom mb-3">{{ results|length }} Treffer, nach Übereinstimmung sortiert</p>
+
+      {% for user, score, connection in results %}
+      <div class="card-soft mb-3 d-flex align-items-center gap-3">
+        <a href="{{ url_for('main.user_profile', user_id=user.id) }}">
+          <img class="avatar-sm" src="{{ user.photo_url }}" alt="Foto von {{ user.name }}">
+        </a>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <a href="{{ url_for('main.user_profile', user_id=user.id) }}"
+                 class="fw-semibold text-decoration-none" style="color:var(--ink)">{{ user.name }}</a>
+              {% if user.city %}<span class="text-muted-custom ms-2 small">{{ user.city }}</span>{% endif %}
+              <div class="mt-1">
+                {% for goal in user.goals %}
+                  <span class="pill" style="margin-bottom:.25rem">{{ goal.goal_category }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            <span class="score-badge" title="Match-Score">{{ score }}/4</span>
+          </div>
+        </div>
+        <div class="flex-shrink-0">
+          {% if connection is none %}
+            <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-ember btn-sm">Verbinden</button>
+            </form>
+          {% elif connection.status == "requested" %}
+            {% if connection.user1_id == current_user.id %}
+              <span class="text-muted-custom small">Anfrage gesendet</span>
+            {% else %}
+              <div class="d-flex gap-1 flex-column">
+                <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-success btn-sm w-100">Annehmen</button>
+                </form>
+                <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-ghost btn-sm w-100">Ablehnen</button>
+                </form>
+              </div>
+            {% endif %}
+          {% else %}
+            <span class="pill-success">Partner ✓</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+      <div class="card-soft text-center py-5">
+        <p class="profile-name mb-1" style="font-size:1.4rem">Kein passender Partner gefunden.</p>
+        <p class="text-muted-custom">Versuch andere Filter oder lass einzelne Kriterien weg.</p>
+      </div>
+    {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}

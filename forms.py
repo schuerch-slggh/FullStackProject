@@ -17,6 +17,15 @@ GOAL_CATEGORIES = [
     ("Gewohnheit", "Gewohnheit"),
 ]
 
+FREQUENCY_CHOICES = [
+    ("", "Alle"),
+    ("täglich", "täglich"),
+    ("2x pro Woche", "2x pro Woche"),
+    ("3x pro Woche", "3x pro Woche"),
+    ("4x pro Woche", "4x pro Woche"),
+    ("5x pro Woche", "5x pro Woche"),
+]
+
 
 class LoginForm(FlaskForm):
     email = StringField("E-Mail", validators=[DataRequired(), Email()])
@@ -71,3 +80,18 @@ class GoalForm(FlaskForm):
     frequency = StringField("Frequenz", validators=[Optional(), Length(max=40)])
     preferred_checkin_time = StringField("Bevorzugte Check-in-Zeit", validators=[Optional(), Length(max=20)])
     submit = SubmitField("Commitment speichern")
+
+
+class SearchForm(FlaskForm):
+    """Partner search form — submitted via GET, so CSRF is disabled."""
+
+    class Meta:
+        csrf = False
+
+    category = SelectField(
+        "Kategorie",
+        choices=[("", "Alle")] + GOAL_CATEGORIES,
+    )
+    frequency = SelectField("Frequenz", choices=FREQUENCY_CHOICES)
+    city = StringField("Stadt / Ort", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Suchen")

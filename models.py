@@ -1,4 +1,4 @@
-"""Database entities (ORM models)."""
+"""Database entities (ORM models) and domain helpers."""
 from datetime import datetime
 
 from flask_login import UserMixin
@@ -139,6 +139,16 @@ class Connection(db.Model):
         cascade="all, delete-orphan",
     )
 
+    @classmethod
+    def between(cls, user_a_id: int, user_b_id: int) -> "Connection | None":
+        """Return the connection between two users regardless of direction."""
+        return cls.query.filter(
+            db.or_(
+                db.and_(cls.user1_id == user_a_id, cls.user2_id == user_b_id),
+                db.and_(cls.user1_id == user_b_id, cls.user2_id == user_a_id),
+            )
+        ).first()
+
     def __repr__(self):
         return f"<Connection {self.id} {self.user1_id}↔{self.user2_id} {self.status}>"
 
@@ -184,3 +194,27 @@ class Checkin(db.Model):
 
     def __repr__(self):
         return f"<Checkin {self.id} user={self.user_id} date={self.checkin_date}>"
+
+
+def match_score(user_a: User, user_b: User) -> int:
+    """Match score between two users based on goal overlap (0–4).
+
+    +2  at least one shared goal category
+    +1  at least one shared frequency
+    +1  at least one shared preferred check-in time
+    """
+    cats_a = {g.goal_category for g in user_a.goals}
+    cats_b = {g.goal_category for g in user_b.goals}
+    freqs_a = {g.frequency for g in user_a.goals if g.frequency}
+    freqs_b = {g.frequency for g in user_b.goals if g.frequency}
+    times_a = {g.preferred_checkin_time for g in user_a.goals if g.preferred_checkin_time}
+    times_b = {g.preferred_checkin_time for g in user_b.goals if g.preferred_checkin_time}
+
+    score = 0
+    if cats_a & cats_b:
+        score += 2
+    if freqs_a & freqs_b:
+        score += 1
+    if times_a & times_b:
+        score += 1
+    return score

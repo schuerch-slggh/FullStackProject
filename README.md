@@ -54,6 +54,10 @@ MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 | `/goals/new` | Commitment hinzufügen |
 | `/goals/<id>/delete` | Commitment löschen (POST) |
 | `/u/<id>` | Fremdprofil ansehen |
+| `/search` | Partner suchen + Match-Score (GET) |
+| `/connect/<id>` | Verbindungsanfrage senden (POST) |
+| `/connections/<id>/accept` | Anfrage annehmen (POST) |
+| `/connections/<id>/decline` | Anfrage ablehnen / zurückziehen (POST) |
 
 ## Projektstruktur
 
@@ -61,11 +65,17 @@ MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 __init__.py      App-Factory (create_app, CSRFProtect, DB, Login)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
-views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil
+views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil,
+                            Suche (match_score), Verbindungen (send/accept/decline)
 models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin)
-forms.py         WTForms (Login, Registrierung, Profil bearbeiten, GoalForm)
+                 + Domain-Helfer: match_score(), Connection.between()
+forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm,
+                          GoalForm, SearchForm
 seed.py          CLI: flask seed (10 Profile + Connections, Messages, Checkins)
-static/          CSS, Uploads (static/uploads/)
-templates/       Jinja2-Templates
-tests/           pytest-Tests (13 Tests, test_m2 + test_goals + test_m3)
+conftest.py      sys.path-Fix damit pytest das App-Paket im Repo-Root findet
+static/          style.css, Uploads (static/uploads/)
+templates/       Jinja2-Templates (landing, login, register, profile, edit_profile,
+                 goal_form, user_profile, search)
+doc/             ER-Modell (diagramms.md), Anforderungskatalog, Personas
+tests/           pytest-Tests (22 Tests: test_m2 + test_goals + test_m3 + test_m4)
 ```

@@ -22,6 +22,28 @@
     </div>
   </section>
 
+  {% if pending_requests %}
+  <section class="card-soft" style="border-left:3px solid var(--ember)">
+    <p class="section-eyebrow">Verbindungsanfragen ({{ pending_requests|length }})</p>
+    {% for conn in pending_requests %}
+    <div class="d-flex justify-content-between align-items-center{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
+      <a href="{{ url_for('main.user_profile', user_id=conn.user1_id) }}"
+         class="fw-semibold text-decoration-none" style="color:var(--ink)">{{ conn.user1.name }}</a>
+      <div class="d-flex gap-2">
+        <form method="post" action="{{ url_for('main.accept_connection', conn_id=conn.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-success btn-sm">Annehmen</button>
+        </form>
+        <form method="post" action="{{ url_for('main.decline_connection', conn_id=conn.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-sm">Ablehnen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   <section class="card-soft">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <p class="section-eyebrow mb-0">Meine Commitments</p>
