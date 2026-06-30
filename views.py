@@ -1,17 +1,20 @@
 """Main controller: landing page, profile, goal management, search,
 connections, chat & check-in."""
 import os
-from datetime import date
+from datetime import date, datetime
 
 from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort, request
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import db
-from .models import User, Goal, Photo, Connection, Message, Checkin, match_score, due_reminders
+from .models import (
+    User, Goal, Photo, Connection, Message, Checkin, Rating,
+    match_score, due_reminders, checkin_history,
+)
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
-    SettingsForm, CoachGoalForm,
+    SettingsForm, CoachGoalForm, RatingForm,
 )
 from .mailer import notify
 from .coach import sharpen_goal, motivational_message
@@ -28,6 +31,19 @@ def _checked_in_today(user):
     return Checkin.query.filter_by(
         user_id=user.id, checkin_date=date.today()
     ).first() is not None
+
+
+@main_bp.before_app_request
+def _touch_last_seen():
+    """Track activity for the online status (FA-16 AK2), throttled to one write
+    per minute so it doesn't add a commit to every request."""
+    if not current_user.is_authenticated:
+        return
+    now = datetime.utcnow()
+    last = current_user.last_seen
+    if last is None or (now - last).total_seconds() > 60:
+        current_user.last_seen = now
+        db.session.commit()
 
 
 @main_bp.route("/")
@@ -54,6 +70,7 @@ def profile():
         checkin_form=checkin_form,
         checked_in_today=_checked_in_today(current_user),
         reminders=due_reminders(current_user),
+        history=checkin_history(current_user),
     )
 
 
@@ -123,7 +140,16 @@ def delete_goal(goal_id):
 def user_profile(user_id):
     user = db.get_or_404(User, user_id)
     connection = Connection.between(current_user.id, user_id)
-    return render_template("user_profile.html", user=user, connection=connection)
+    my_rating = Rating.query.filter_by(
+        rater_id=current_user.id, ratee_id=user_id
+    ).first()
+    rating_form = RatingForm()
+    if my_rating:
+        rating_form.stars.data = str(my_rating.stars)
+    return render_template(
+        "user_profile.html", user=user, connection=connection,
+        rating_form=rating_form, my_rating=my_rating,
+    )
 
 
 @main_bp.route("/search")
@@ -151,7 +177,9 @@ def search():
             (u, match_score(current_user, u), Connection.between(current_user.id, u.id))
             for u in users
         ]
-        results = sorted(scored, key=lambda x: x[1], reverse=True)
+        # Primär nach Match-Score, bei Gleichstand nach Reputation (FA-13 AK3) —
+        # der zuverlässigere Partner erscheint weiter oben.
+        results = sorted(scored, key=lambda x: (x[1], x[0].reputation), reverse=True)
 
     return render_template("search.html", form=form, results=results, searched=searched)
 
@@ -201,6 +229,30 @@ def decline_connection(conn_id):
     db.session.commit()
     flash(f"Verbindungsanfrage mit {other_name} wurde zurückgezogen.", "info")
     return redirect(url_for("main.profile"))
+
+
+@main_bp.route("/rate/<int:user_id>", methods=["POST"])
+@login_required
+def rate_user(user_id):
+    """Einen aktiven Partner bewerten (FA-13 AK2). Re-Bewerten überschreibt."""
+    other = db.get_or_404(User, user_id)
+    conn = Connection.between(current_user.id, user_id)
+    # Nur aktive Partner dürfen sich bewerten (NFA-03 / FA-13 AK2).
+    if other.id == current_user.id or conn is None or conn.status != "active":
+        abort(403)
+    form = RatingForm()
+    if form.validate_on_submit():
+        stars = int(form.stars.data)
+        rating = Rating.query.filter_by(rater_id=current_user.id, ratee_id=user_id).first()
+        if rating:
+            rating.stars = stars
+        else:
+            db.session.add(Rating(rater_id=current_user.id, ratee_id=user_id, stars=stars))
+        db.session.commit()
+        flash(f"Bewertung für {other.name} gespeichert.", "success")
+    else:
+        flash("Bewertung konnte nicht gespeichert werden.", "danger")
+    return redirect(url_for("main.user_profile", user_id=user_id))
 
 
 @main_bp.route("/checkin", methods=["POST"])
@@ -259,6 +311,15 @@ def chat(conn_id):
             f"{current_user.name}.",
         )
         return redirect(url_for("main.chat", conn_id=conn.id))
+
+    # FA-16 AK1: Beim Öffnen des Chats die Nachrichten des Partners als gelesen
+    # markieren, damit der Absender den Lese-Status sieht.
+    now = datetime.utcnow()
+    unread = [m for m in conn.messages if m.sender_id != current_user.id and m.read_at is None]
+    if unread:
+        for m in unread:
+            m.read_at = now
+        db.session.commit()
 
     return render_template(
         "chat.html", conn=conn, partner=conn.partner_of(current_user), form=form,

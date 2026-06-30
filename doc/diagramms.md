@@ -1,4 +1,4 @@
-# ER-Modell — Momentum (Stand M6)
+# ER-Modell — Momentum (Stand M7)
 
 Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 
@@ -16,6 +16,7 @@ Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 | string(80) | city | | nullable; Distanz-Filter via ILIKE |
 | text | bio | | nullable |
 | bool | notify_email | NOT NULL | default True; E-Mail-Notification an/aus (FA-10 AK2) |
+| datetime | last_seen | | nullable; zuletzt aktiv → Online-Status (FA-16 AK2) |
 | datetime | created_at | | |
 
 Property (kein DB-Feld): `photo_url` → primäres Foto aus `Photo`; Fallback auf neuestes.
@@ -23,6 +24,10 @@ Property (kein DB-Feld): `photo_url` → primäres Foto aus `Photo`; Fallback au
 Property (kein DB-Feld): `streak` → längste Kette aufeinanderfolgender Tage mit
 Check-in, die heute oder gestern endet; eine Lücke setzt sie zurück (FA-08). Berechnet
 aus `Checkin.checkin_date`, daher kein gespeicherter Zähler.
+
+Property (kein DB-Feld): `activity_level` (Anteil der letzten 14 Tage mit Check-in),
+`avg_rating` (Schnitt der erhaltenen `Rating.stars`), `reputation` (0–5; FA-13) und
+`is_online` (`last_seen` < 5 min; FA-16 AK2). Alle berechnet, kein gespeicherter Wert.
 
 ---
 
@@ -84,6 +89,7 @@ Beziehung: n Connection → 1 User (als user1) · n Connection → 1 User (als u
 | int | sender_id | FK → User, idx | NOT NULL |
 | text | text | NOT NULL | |
 | datetime | sent_at | idx | default utcnow |
+| datetime | read_at | | nullable; gesetzt beim Öffnen durch den Empfänger (FA-16 AK1) |
 
 Index: (connection_id, sent_at) für chronologischen Abruf.
 
@@ -108,6 +114,23 @@ Beziehung: n Checkin → 1 User · n Checkin → 0..1 Goal
 
 ---
 
+## Entity: Rating
+
+| Typ | Feld | Constraint | Hinweis |
+|---|---|---|---|
+| int | id | PK | |
+| int | rater_id | FK → User, idx | NOT NULL; bewertender Partner |
+| int | ratee_id | FK → User, idx | NOT NULL; bewerteter Partner |
+| int | stars | NOT NULL | 1–5 |
+| datetime | created_at | | |
+
+Constraints: UniqueConstraint(rater_id, ratee_id) — max. eine Bewertung je Paar
+(Re-Bewerten überschreibt). Nur aktive Partner dürfen bewerten (FA-13 AK2 / NFA-03).
+
+Beziehung: n Rating → 1 User (als rater) · n Rating → 1 User (als ratee, cascade delete)
+
+---
+
 ## Beziehungsübersicht
 
 ```
@@ -117,6 +140,8 @@ User ─────1:n──── Checkin
 User ─────1:n──── Connection  (als user1, Initiator)
 User ─────1:n──── Connection  (als user2, Empfänger)
 User ─────1:n──── Message     (als sender)
+User ─────1:n──── Rating       (als rater)
+User ─────1:n──── Rating       (als ratee)
 Goal ─────1:n──── Checkin     (nullable FK)
 Connection ──1:n── Message
 ```
@@ -153,6 +178,10 @@ Alle aktiven Partnerschaften eines Nutzers, nach letzter Aktivität sortiert —
 ### `due_reminders(user, *, now=None) → list[Goal]`
 
 Liefert die Goals, deren Check-in heute fällig und noch nicht erledigt ist (FA-09). Der „Schedule" ist die `frequency` + `preferred_checkin_time` des Goals (kein separates Entity). Ein Goal ist fällig, wenn eine Check-in-Zeit gesetzt ist, die aktuelle Uhrzeit sie überschritten hat und für das Goal heute kein `Checkin` existiert. `now` ist injizierbar (deterministisch testbar). In-App-Trigger ohne Hintergrundjob.
+
+### `checkin_history(user, *, days=14, today=None) → list[dict]`
+
+Liefert je Tag der letzten `days` Tage `{"date", "count"}` (älteste zuerst) — Datenbasis für das Fortschritts-Diagramm auf dem Profil (FA-12 AK2). `today` ist injizierbar (deterministisch testbar).
 
 ## KI-Coach & E-Mail (kein DB-Feld)
 

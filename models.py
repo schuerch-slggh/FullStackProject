@@ -1,10 +1,15 @@
 """Database entities (ORM models) and domain helpers."""
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from . import db
+
+# Sliding window for the activity component of the reputation score (FA-13).
+REPUTATION_WINDOW_DAYS = 14
+# How long after the last request a user still counts as "online" (FA-16 AK2).
+ONLINE_WINDOW_SECONDS = 300
 
 
 class User(UserMixin, db.Model):
@@ -29,6 +34,9 @@ class User(UserMixin, db.Model):
     # --- Settings ---
     # E-Mail-Notification an/aus (FA-10 AK2); default an.
     notify_email = db.Column(db.Boolean, default=True, nullable=False)
+
+    # Zuletzt aktiv — Basis für den Online-Status im Chat (FA-16 AK2).
+    last_seen = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -63,6 +71,18 @@ class User(UserMixin, db.Model):
         foreign_keys="Message.sender_id",
         back_populates="sender",
     )
+    ratings_received = db.relationship(
+        "Rating",
+        foreign_keys="Rating.ratee_id",
+        back_populates="ratee",
+        cascade="all, delete-orphan",
+    )
+    ratings_given = db.relationship(
+        "Rating",
+        foreign_keys="Rating.rater_id",
+        back_populates="rater",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def photo_url(self):
@@ -89,6 +109,44 @@ class User(UserMixin, db.Model):
             else:
                 break
         return streak
+
+    @property
+    def activity_level(self):
+        """Share of the last 14 days with at least one check-in (0.0–1.0).
+
+        The measurable activity component of the reputation score (FA-13 AK1):
+        how reliably the user actually checks in.
+        """
+        window = {date.today() - timedelta(days=d) for d in range(REPUTATION_WINDOW_DAYS)}
+        done = {c.checkin_date for c in self.checkins if c.checkin_date in window}
+        return len(done) / REPUTATION_WINDOW_DAYS
+
+    @property
+    def avg_rating(self):
+        """Average star rating from partners, or None if not yet rated (FA-13 AK2)."""
+        ratings = self.ratings_received
+        return sum(r.stars for r in ratings) / len(ratings) if ratings else None
+
+    @property
+    def reputation(self):
+        """Reliability score 0.0–5.0 (FA-13): blends activity and partner ratings.
+
+        Without any ratings the score is the activity level scaled to five
+        stars; once partners have rated the user, activity and the average
+        rating are weighted equally. Visible on the profile and used as the
+        tie-breaker in the match ordering (FA-13 AK3).
+        """
+        activity_stars = self.activity_level * 5
+        if self.avg_rating is None:
+            return round(activity_stars, 1)
+        return round((activity_stars + self.avg_rating) / 2, 1)
+
+    @property
+    def is_online(self):
+        """True if the user was active within the last few minutes (FA-16 AK2)."""
+        if self.last_seen is None:
+            return False
+        return (datetime.utcnow() - self.last_seen).total_seconds() < ONLINE_WINDOW_SECONDS
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -206,6 +264,8 @@ class Message(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     text = db.Column(db.Text, nullable=False)
     sent_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    # Gesetzt, sobald der Empfänger den Chat öffnet (FA-16 AK1). NULL = ungelesen.
+    read_at = db.Column(db.DateTime)
 
     connection = db.relationship("Connection", back_populates="messages")
     sender = db.relationship("User", foreign_keys=[sender_id], back_populates="messages_sent")
@@ -234,6 +294,30 @@ class Checkin(db.Model):
 
     def __repr__(self):
         return f"<Checkin {self.id} user={self.user_id} date={self.checkin_date}>"
+
+
+class Rating(db.Model):
+    """A reliability rating one partner gives another (FA-13 AK2).
+
+    A user can hold at most one rating per partner; re-rating updates it.
+    """
+
+    __tablename__ = "rating"
+    __table_args__ = (
+        db.UniqueConstraint("rater_id", "ratee_id", name="uq_rating_pair"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    rater_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    ratee_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    stars = db.Column(db.Integer, nullable=False)  # 1–5
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    rater = db.relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
+    ratee = db.relationship("User", foreign_keys=[ratee_id], back_populates="ratings_received")
+
+    def __repr__(self):
+        return f"<Rating {self.id} {self.rater_id}→{self.ratee_id} {self.stars}★>"
 
 
 def match_score(user_a: User, user_b: User) -> int:
@@ -288,3 +372,20 @@ def due_reminders(user: User, *, now: datetime = None) -> "list[Goal]":
         if scheduled is not None and now.time() >= scheduled:
             due.append(goal)
     return due
+
+
+def checkin_history(user: User, *, days: int = 14, today: date = None) -> "list[dict]":
+    """Per-day check-in counts over the last `days` days (FA-12 AK2).
+
+    Returns a chronological list (oldest first) of `{"date", "count"}`, ready to
+    render as a simple progress chart. `today` is injectable for deterministic
+    tests.
+    """
+    today = today or date.today()
+    counts = {}
+    for c in user.checkins:
+        counts[c.checkin_date] = counts.get(c.checkin_date, 0) + 1
+    return [
+        {"date": today - timedelta(days=d), "count": counts.get(today - timedelta(days=d), 0)}
+        for d in reversed(range(days))
+    ]

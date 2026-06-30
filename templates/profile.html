@@ -13,6 +13,12 @@
         {% if user.age and user.city %} · {% endif %}
         {% if user.city %}{{ user.city }}{% endif %}
       </p>
+      <p class="reputation" title="Verlässlichkeit aus Aktivität und Partner-Bewertungen">
+        <span class="rep-star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="rep-max">/5</span>
+        {% if user.avg_rating is not none %}
+          <span class="rep-note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
+        {% endif %}
+      </p>
       <a href="{{ url_for('main.edit_profile') }}" class="btn btn-ghost btn-sm mt-2">Profil bearbeiten</a>
     </div>
     <div class="streak" title="Aktueller Streak">
@@ -70,6 +76,21 @@
       {{ checkin_form.note(class="form-control", placeholder="Notiz (optional)") }}
       <button type="submit" class="btn btn-ember">Heute einchecken</button>
     </form>
+  </section>
+
+  {# FA-12 AK2: einfaches Diagramm der Check-in-Historie über die Zeit #}
+  <section class="card-soft">
+    <p class="section-eyebrow">Fortschritt · letzte 14 Tage</p>
+    {% set max_count = (history | map(attribute='count') | max) or 1 %}
+    <div class="history-chart" role="img"
+         aria-label="Check-ins der letzten 14 Tage">
+      {% for day in history %}
+      <div class="history-bar-wrap" title="{{ day.date.strftime('%d.%m.') }}: {{ day.count }} Check-in{{ '' if day.count == 1 else 's' }}">
+        <div class="history-bar{% if day.count %} filled{% endif %}"
+             style="height: {{ (12 + (day.count / max_count * 88)) if day.count else 6 }}%"></div>
+      </div>
+      {% endfor %}
+    </div>
   </section>
 
   {% if partners %}

@@ -68,7 +68,8 @@ externe Dienste lauffähig.
 | `/connect/<id>` | Verbindungsanfrage senden (POST) |
 | `/connections/<id>/accept` | Anfrage annehmen (POST) |
 | `/connections/<id>/decline` | Anfrage ablehnen / zurückziehen (POST) |
-| `/chat/<id>` | 1:1-Chat einer aktiven Verbindung (GET zeigt Verlauf, POST sendet) |
+| `/rate/<id>` | Aktiven Partner bewerten (1–5 ★) für den Reputations-Score (POST) |
+| `/chat/<id>` | 1:1-Chat einer aktiven Verbindung (GET zeigt Verlauf + markiert gelesen, POST sendet) |
 | `/checkin` | Check-in für heute markieren (POST) |
 | `/settings` | E-Mail-Benachrichtigungen an/aus (GET/POST) |
 | `/coach` | KI-Coach-Seite (GET) |
@@ -81,17 +82,21 @@ externe Dienste lauffähig.
 __init__.py      App-Factory (create_app, CSRFProtect, DB, Login, MAIL_*-Config)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
-views.py         Blueprint: Profil (inkl. Erinnerungen), Bearbeiten, Goal-Verwaltung,
-                            Fremdprofil, Suche (match_score), Verbindungen
-                            (send/accept/decline), Chat, Check-in, Einstellungen,
-                            KI-Coach (coach/motivate/sharpen)
-models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin)
-                 + Domain-Helfer: match_score(), due_reminders(),
+views.py         Blueprint: Profil (Erinnerungen + Fortschritts-Diagramm), Bearbeiten,
+                            Goal-Verwaltung, Fremdprofil, Suche (match_score, nach
+                            Reputation sortiert), Verbindungen (send/accept/decline),
+                            Partner bewerten (rate), Chat (Lese-Markierung), Check-in,
+                            Einstellungen, KI-Coach; before_app_request setzt last_seen
+models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin,
+                 Rating)
+                 + Domain-Helfer: match_score(), due_reminders(), checkin_history(),
                    Connection.between()/.active_for()/.involves()/.partner_of();
-                   berechnete Property User.streak; Spalte User.notify_email
+                   berechnete Properties User.streak/.reputation/.activity_level/
+                   .avg_rating/.is_online; Spalten User.notify_email/.last_seen,
+                   Message.read_at
 forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm, GoalForm,
                           SearchForm, MessageForm, CheckinForm, SettingsForm,
-                          CoachGoalForm
+                          CoachGoalForm, RatingForm
 mailer.py        E-Mail-Notification (FA-10): send_email()/notify(), SMTP optional
 coach.py         KI-Coach (FA-11): sharpen_goal()/motivational_message() via
                  Anthropic-API mit lokalem Offline-Fallback; datensparsam (NFA-09)
@@ -101,6 +106,6 @@ static/          style.css, Uploads (static/uploads/)
 templates/       Jinja2-Templates (landing, login, register, profile, edit_profile,
                  goal_form, user_profile, search, chat, settings, coach)
 doc/             ER-Modell (diagramms.md), Anforderungskatalog, Personas
-tests/           pytest-Tests (34 Tests: test_m2 + test_goals + test_m3 + test_m4
-                 + test_m5 + test_m6)
+tests/           pytest-Tests (42 Tests: test_m2 + test_goals + test_m3 + test_m4
+                 + test_m5 + test_m6 + test_m7)
 ```

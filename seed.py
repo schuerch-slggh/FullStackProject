@@ -7,7 +7,7 @@ import click
 from datetime import timedelta, date as _date, datetime
 
 from . import db
-from .models import User, Goal, Photo, Connection, Message, Checkin
+from .models import User, Goal, Photo, Connection, Message, Checkin, Rating
 
 DEMO_PASSWORD = "accountability"
 
@@ -126,6 +126,16 @@ _CONNECTIONS = [
     ("finn.koch@example.com", "nora.graf@example.com", "requested"),
 ]
 
+# (rater_email, ratee_email, stars) — gegenseitige Bewertungen aktiver Partner (FA-13)
+_RATINGS = [
+    ("anna.keller@example.com", "luca.bianchi@example.com", 5),
+    ("luca.bianchi@example.com", "anna.keller@example.com", 4),
+    ("sara.meier@example.com", "mara.fischer@example.com", 5),
+    ("mara.fischer@example.com", "sara.meier@example.com", 5),
+    ("jonas.weber@example.com", "david.huber@example.com", 4),
+    ("david.huber@example.com", "jonas.weber@example.com", 5),
+]
+
 # (connection_index into active connections, sender_email, text, days_ago)
 _MESSAGES = [
     (0, "anna.keller@example.com", "Hey, check-in für heute Abend?", 5),
@@ -181,11 +191,14 @@ def seed_db():
         if conn_idx >= len(active_conns):
             continue
         conn = active_conns[conn_idx]
+        sent_at = today - timedelta(days=days_ago)
         msg = Message(
             connection_id=conn.id,
             sender_id=users[sender_email].id,
             text=text,
-            sent_at=today - timedelta(days=days_ago),
+            sent_at=sent_at,
+            # Seed-Nachrichten sind älter und gelten als gelesen (FA-16 AK1).
+            read_at=sent_at,
         )
         db.session.add(msg)
 
@@ -199,6 +212,14 @@ def seed_db():
                 user_id=u.id,
                 checkin_date=today_date - timedelta(days=d),
             ))
+
+    # --- Ratings: gegenseitige Partner-Bewertungen (FA-13) ---
+    for rater_email, ratee_email, stars in _RATINGS:
+        db.session.add(Rating(
+            rater_id=users[rater_email].id,
+            ratee_id=users[ratee_email].id,
+            stars=stars,
+        ))
 
     db.session.commit()
     return len(DUMMIES)

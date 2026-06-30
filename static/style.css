@@ -304,3 +304,47 @@ textarea.form-control { min-height: 5rem; resize: vertical; }
   padding: .8rem 1rem;
   white-space: pre-wrap; word-break: break-word;
 }
+
+/* ---- Reputation (FA-13) ---- */
+.reputation { margin: .15rem 0 0; font-size: .9rem; font-weight: 600; color: var(--ink); }
+.reputation .rep-star { color: var(--ember); }
+.reputation .rep-max { color: var(--slate); font-weight: 500; }
+.reputation .rep-note { color: var(--slate); font-weight: 500; font-size: .82rem; }
+
+/* ---- Progress chart (FA-12) ---- */
+.history-chart {
+  display: flex; align-items: flex-end; gap: .35rem;
+  height: 96px; padding-top: .25rem;
+}
+.history-bar-wrap { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; }
+.history-bar {
+  width: 100%; border-radius: 5px;
+  background: var(--border); transition: height .2s ease;
+}
+.history-bar.filled { background: var(--ember); }
+
+/* ---- Rating form (FA-13 AK2) ---- */
+.rating-form { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.rating-form .form-select { width: auto; }
+
+/* ---- Presence & read status (FA-16) ---- */
+.chat-partner-id { display: flex; flex-direction: column; line-height: 1.2; }
+.presence { font-size: .72rem; font-weight: 500; display: inline-flex; align-items: center; gap: .3rem; }
+.presence.online { color: #1a7f37; }
+.presence.offline { color: var(--slate); }
+.presence-dot { width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; display: inline-block; }
+.chat-status { font-style: italic; }
+
+/* ---- Responsive (NFA-06): keine horizontalen Überläufe auf dem Smartphone ---- */
+html, body { overflow-x: hidden; }
+img { max-width: 100%; }
+.score-badge, .pill-success, .pill { white-space: normal; }
+
+@media (max-width: 575px) {
+  .card-soft { padding: 1.15rem; }
+  .commit-facts { gap: 1.25rem; }
+  .auth-card { padding: 1.75rem 1.25rem; }
+  .nav-link-text { padding: .25rem .3rem; font-size: .82rem; }
+  .app-nav .d-flex { gap: .25rem !important; flex-wrap: wrap; justify-content: flex-end; }
+  .checkin-form .form-control { flex-basis: 100%; }
+}

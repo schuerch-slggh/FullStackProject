@@ -122,3 +122,14 @@ class CoachGoalForm(FlaskForm):
 
     goal_text = TextAreaField("Dein Ziel", validators=[DataRequired(), Length(max=280)])
     submit = SubmitField("Konkreter machen")
+
+
+class RatingForm(FlaskForm):
+    """Bewertung eines Partners als Accountability-Buddy (FA-13 AK2)."""
+
+    stars = SelectField(
+        "Bewertung",
+        choices=[("5", "★★★★★"), ("4", "★★★★"), ("3", "★★★"), ("2", "★★"), ("1", "★")],
+        validators=[DataRequired()],
+    )
+    submit = SubmitField("Bewertung speichern")

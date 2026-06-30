@@ -31,7 +31,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M4** — Suche, Match-Algorithmus & Verbindung
 - [x] **M5** — 1:1-Chat & Check-in
 - [x] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
-- [ ] **M7** — UX-Politur & Zusatzfunktionen (Richtung 6.0)
+- [x] **M7** — UX-Politur & Zusatzfunktionen (Richtung 6.0)
 - [ ] **M8** — Testlauf, Test-Prozeduren, Bug-Liste, MySQL-Integration
 - [ ] **M9** — Abgabe (Git-Release, Video-Demo, Tagebuch)
 
@@ -306,16 +306,66 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   `MAIL_SERVER` nur als Log; KI-Coach ohne Key über lokalen Fallback.
 - **Next steps:** UX-Politur & Zusatzfunktionen (Richtung 6.0) → M7.
 
-### M7 — UX-Politur & Zusatzfunktionen · geplant
+### M7 — UX-Politur & Zusatzfunktionen · erledigt
 
-- **Ziel:** Note Richtung 6.0 über UX und sinnvolle Extras.
-- **Geplanter Umfang:** Streak-/Fortschritts-Diagramm (FA-12); Reputations-Score
-  aus Aktivität + Bewertungen (FA-13); Gesendet-/Gelesen- und Online-Status
-  (FA-16); durchgängig responsives Design (NFA-06); Bedienbarkeit ohne Anleitung
-  (NFA-04). Optional Sprachnachrichten (FA-15).
-- **Deckt ab:** FA-12, FA-13, FA-16, NFA-04, NFA-06; optional FA-15.
-- **Akzeptanz-Fokus:** Grundfunktionen auf Smartphone-Viewport ohne horizontales
-  Scrollen; Score sichtbar und nachvollziehbar in der Match-Reihenfolge.
+- **Datum:** 30.06.2026
+- **Ziel:** Note Richtung 6.0 über UX und sinnvolle Extras — Fortschritts­
+  visualisierung, Verlässlichkeits-Score, Chat-Status, responsives Layout und
+  formularnahe Fehlermeldungen.
+- **Was geändert wurde:**
+  - **FA-12 (Fortschritt):** Domain-Helfer `checkin_history(user, *, days=14,
+    today=None)` in `models.py` (chronologische Tageszählung der Check-ins,
+    `today` injizierbar/deterministisch). `profile()` gibt
+    `history=checkin_history(...)` mit; `profile.html` rendert daraus ein
+    einfaches CSS-Balkendiagramm (keine externe Chart-Bibliothek → offline,
+    minimale Deps). Der numerische Streak bleibt im Profilkopf (FA-12 AK1).
+  - **FA-13 (Reputation):** Neue Entity `Rating` (rater/ratee/stars 1–5,
+    `UniqueConstraint(rater_id, ratee_id)`); User-Relationships
+    `ratings_received`/`ratings_given` (cascade delete). Berechnete Properties
+    auf `User`: `activity_level` (Anteil der letzten 14 Tage mit Check-in,
+    FA-13 AK1), `avg_rating`, `reputation` (0–5: Aktivität, bei vorhandenen
+    Bewertungen gleichgewichtet mit dem Bewertungsschnitt). `RatingForm` in
+    `forms.py`; Route `POST /rate/<user_id>` (nur aktive Partner, sonst 403;
+    Re-Bewerten überschreibt, FA-13 AK2). Reputation auf `profile.html` und
+    `user_profile.html` sichtbar (AK3); Bewertungsformular auf dem Fremdprofil
+    bei aktiver Verbindung. `/search` sortiert primär nach Match-Score, bei
+    Gleichstand nach `reputation` (nachvollziehbare Reihenfolge, AK3).
+  - **FA-16 (Status):** `Message.read_at` und `User.last_seen` (neue Spalten).
+    Beim Öffnen des Chats werden die Nachrichten des Partners als gelesen
+    markiert; der Absender sieht „Gesendet"/„Gelesen" an der eigenen Sprechblase
+    (AK1). `User.is_online` (last_seen < 5 min) + `before_app_request`-Hook
+    `_touch_last_seen` (auf 1 Schreibvorgang/Minute gedrosselt) treiben den
+    Online-/Offline-Indikator im Chat-Kopf (AK2).
+  - **NFA-04 (Usability):** `login.html` zeigt jetzt Feldfehler inline (AK2;
+    die übrigen Formulare taten dies bereits). Klare Navigation/Beschriftungen
+    für den Erst-Nutzer-Flow (AK1).
+  - **NFA-06 (Responsiv):** Responsive Regeln in `static/style.css`
+    (`overflow-x:hidden`, `img{max-width:100%}`, Pills umbrechen,
+    `@media (max-width:575px)` für Nav/Cards/Check-in-Form) → Grundfunktionen
+    ohne horizontales Scrollen auf dem Smartphone-Viewport (AK1).
+  - `models.py`: Konstanten `REPUTATION_WINDOW_DAYS=14`,
+    `ONLINE_WINDOW_SECONDS=300`.
+  - `seed.py`: sechs gegenseitige Partner-Bewertungen (`_RATINGS`); Seed-
+    Nachrichten erhalten `read_at` (gelten als gelesen).
+  - `tests/test_m7.py` (neu): 8 Tests.
+- **How to run:** Schema-Reset nötig (neue Tabelle `rating`, neue Spalten
+  `message.read_at`, `user.last_seen`): `instance/app.db` löschen →
+  `flask --app main seed` → `flask --app main run --debug`. Fortschritts-
+  Diagramm und Reputation auf dem Profil; Bewerten auf dem Profil eines aktiven
+  Partners (`/u/<id>`); Sende-/Lese- und Online-Status im Chat.
+- **How to test:** `pytest tests/ -v` → 42 passed (4 + 4 + 5 + 9 + 5 + 7 + 8).
+- **Deckt ab:** FA-12 (AK1–AK2), FA-13 (AK1–AK3), FA-16 (AK1–AK2),
+  NFA-04 (AK1–AK2), NFA-06 (AK1).
+- **Known issues / Entscheidungen:** Diagramm bewusst als CSS-Balken ohne
+  JS-Chart-Lib (offline, keine Zusatz-Abhängigkeit). Reputation 0–5: ohne
+  Bewertungen = Aktivität×5, mit Bewertungen Mittel aus Aktivität und
+  Bewertungsschnitt — einfache, nachvollziehbare Formel statt gewichtetem
+  Modell. Online-Status ist „last_seen < 5 min" und wird pro Request (gedrosselt)
+  aktualisiert — kein WebSocket/Polling. Lese-Markierung passiert beim Laden des
+  Chats (kein Live-Update). FA-15 (Sprachnachrichten, *Could*) **nicht** umgesetzt
+  — Audio-Aufnahme/-Ablage steht in keinem Verhältnis zum MVP-Nutzen, bleibt
+  optional offen.
+- **Next steps:** Testlauf, Test-Prozeduren, Bug-Liste, MySQL-Integration → M8.
 
 ### M8 — Testlauf, Test-Prozeduren, Bug-Liste, MySQL · geplant
 
@@ -380,7 +430,22 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   `ANTHROPIC_API_KEY`; sonst deterministischer lokaler Fallback. Prompts senden
   nur Ziel-Text/Streak (NFA-09). `anthropic` ist optionale Abhängigkeit (lazy
   import), damit Tests netzfrei bleiben und die App ohne Key läuft.
+- **Reputation als berechnete Property (M7):** `User.reputation` (0–5) wird aus
+  `activity_level` (Check-in-Quote der letzten 14 Tage) und `avg_rating`
+  abgeleitet — keine gespeicherte Kennzahl, kein Drift. Bei Gleichstand im
+  Match-Score sortiert `/search` nach Reputation (nachvollziehbar, FA-13 AK3).
+  `Rating` ist eine eigene Entity mit `UniqueConstraint(rater, ratee)`; nur
+  aktive Partner dürfen bewerten (NFA-03).
+- **Fortschritts-Diagramm ohne JS (M7):** CSS-Balken aus `checkin_history`
+  statt Chart-Bibliothek — offline, keine zusätzliche Abhängigkeit, passt zur
+  Prototyp-Minimalität.
+- **Online-Status ohne Push (M7):** `User.last_seen` wird per
+  `before_app_request` gedrosselt (max. 1×/Minute) aktualisiert; `is_online` =
+  „< 5 min". Lese-Status (`Message.read_at`) wird beim Öffnen des Chats gesetzt.
+  Bewusst kein WebSocket/Polling — im Stack nicht vorhanden, für den MVP nicht
+  nötig (Reload zeigt den aktuellen Stand).
 - **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
   seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.
   E-Mail bei fälligem Check-in (Teil von FA-10 AK1) bräuchte einen Scheduler →
-  optional in M7/M8.
+  optional in M8. FA-14 (Distanzgewichtung) und FA-15 (Sprachnachrichten) bleiben
+  als *Could* offen.

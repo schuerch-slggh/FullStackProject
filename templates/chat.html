@@ -7,7 +7,12 @@
   <section class="card-soft chat-head">
     <a href="{{ url_for('main.user_profile', user_id=partner.id) }}" class="chat-partner">
       <img class="avatar-sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
-      <span class="chat-partner-name">{{ partner.name }}</span>
+      <span class="chat-partner-id">
+        <span class="chat-partner-name">{{ partner.name }}</span>
+        <span class="presence {{ 'online' if partner.is_online else 'offline' }}">
+          <span class="presence-dot"></span>{{ "online" if partner.is_online else "offline" }}
+        </span>
+      </span>
     </a>
     <a href="{{ url_for('main.profile') }}" class="btn btn-ghost btn-sm">← Zurück</a>
   </section>
@@ -18,7 +23,12 @@
       <div class="chat-row {{ 'mine' if mine else 'theirs' }}">
         <div class="chat-bubble">
           <p class="chat-text">{{ msg.text }}</p>
-          <span class="chat-time">{{ msg.sent_at.strftime("%d.%m. %H:%M") }}</span>
+          <span class="chat-time">
+            {{ msg.sent_at.strftime("%d.%m. %H:%M") }}
+            {% if mine %}
+              <span class="chat-status">· {{ "Gelesen" if msg.read_at else "Gesendet" }}</span>
+            {% endif %}
+          </span>
         </div>
       </div>
     {% else %}

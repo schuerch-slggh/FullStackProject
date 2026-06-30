@@ -13,6 +13,12 @@
         {% if user.age and user.city %} · {% endif %}
         {% if user.city %}{{ user.city }}{% endif %}
       </p>
+      <p class="reputation" title="Verlässlichkeit aus Aktivität und Partner-Bewertungen">
+        <span class="rep-star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="rep-max">/5</span>
+        {% if user.avg_rating is not none %}
+          <span class="rep-note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
+        {% endif %}
+      </p>
     </div>
     <div class="streak" title="Aktueller Streak">
       <span class="streak-flame">▲</span>
@@ -49,7 +55,17 @@
         </div>
       {% endif %}
     {% else %}
-      <p class="mb-0" style="color:#1a7f37;font-weight:600">✓ Ihr seid verbunden</p>
+      <p class="mb-2" style="color:#1a7f37;font-weight:600">✓ Ihr seid verbunden</p>
+      {# FA-13 AK2: aktive Partner können sich gegenseitig bewerten #}
+      <form method="post" action="{{ url_for('main.rate_user', user_id=user.id) }}"
+            class="rating-form">
+        {{ rating_form.hidden_tag() }}
+        <label class="form-label mb-0">{{ rating_form.stars.label.text }}</label>
+        {{ rating_form.stars(class="form-select form-select-sm") }}
+        <button class="btn btn-ghost btn-sm" type="submit">
+          {{ "Bewertung ändern" if my_rating else "Bewerten" }}
+        </button>
+      </form>
     {% endif %}
   </section>
   {% endif %}

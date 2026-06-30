@@ -13,10 +13,12 @@
       <div class="mb-3">
         {{ form.email.label(class="form-label") }}
         {{ form.email(class="form-control", placeholder="du@example.com", autocomplete="email") }}
+        {% for e in form.email.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
       </div>
       <div class="mb-3">
         {{ form.password.label(class="form-label") }}
         {{ form.password(class="form-control", placeholder="••••••••", autocomplete="current-password") }}
+        {% for e in form.password.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
       </div>
       {{ form.submit(class="btn btn-ember w-100") }}
     </form>
