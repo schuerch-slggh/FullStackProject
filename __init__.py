@@ -28,6 +28,11 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # Foto-Upload: lokales Verzeichnis, max. 5 MB
+    app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
+    app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
     # Bind extensions to this app.
     db.init_app(app)
     login_manager.init_app(app)

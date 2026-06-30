@@ -1,8 +1,4 @@
-"""Database entities (ORM models).
-
-Tag 1 covers the personal profile only -> one entity: User.
-Tag 2 will extend the ER model (Goal, Photo, Match, Message).
-"""
+"""Database entities (ORM models)."""
 from datetime import datetime
 
 from flask_login import UserMixin

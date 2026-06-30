@@ -26,7 +26,7 @@ funktionen; Front- und Backend werden bewertet.
 
 - [x] **M0** — Setup & vertikaler Durchstich (Login + persönliches Profil)
 - [x] **M1** — Startseite & Registrierung (User selbst anlegen)
-- [ ] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
+- [x] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
 - [ ] **M3** — Vollständiges Datenmodell (Goal, Photo, Connection, Message, Checkin)
 - [ ] **M4** — Suche, Match-Algorithmus & Verbindung
 - [ ] **M5** — 1:1-Chat & Check-in
@@ -84,25 +84,39 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   (→ M2). Standard-Avatar extern geladen (Internet nötig).
 - **Next steps:** Profilbearbeitung, Foto-Upload, Fremdprofil-Ansicht (→ M2).
 
-### M2 — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht · geplant
+### M2 — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht · erledigt
 
+- **Datum:** 30.06.2026
 - **Ziel:** Vollständige Erfüllung von „View": eigenes Profil bearbeiten, Foto
   hochladen und Profile anderer Nutzer ansehen.
-- **Geplanter Umfang:** Route + Formular zum Bearbeiten der Profilfelder
-  (vorausgefüllt); Foto-Upload mit Speicherung und Anzeige; öffentliche
-  Profilansicht `/u/<id>` mit strukturierten Daten, Bio, Foto und Streak.
+- **Was geändert wurde:** `EditProfileForm` in `forms.py` (alle Profilfelder +
+  `FileField` mit `FileAllowed`); Route `GET/POST /profile/edit` und
+  `GET /u/<int:user_id>` in `views.py`; Templates `edit_profile.html` und
+  `user_profile.html` (neu); `profile.html` mit „Profil bearbeiten"-Button;
+  `__init__.py` mit `UPLOAD_FOLDER` (`static/uploads/`) und
+  `MAX_CONTENT_LENGTH` (5 MB); `conftest.py` (Root) + `tests/conftest.py` +
+  `tests/test_m2.py` (4 Tests).
+- **How to run:** `flask --app main run --debug` → Profil aufrufen →
+  „Profil bearbeiten" → Formular ausfüllen und optional Foto hochladen.
+  Fremdprofil: `/u/<id>` (eingeloggt).
+- **How to test:** `pytest tests/test_m2.py -v` → 4 passed.
 - **Deckt ab:** FA-02 (AK1–AK3), FA-03 (AK1–AK2).
-- **Akzeptanz-Fokus:** Änderungen bleiben nach Reload erhalten; Foto wird
-  angezeigt; fremde Profile zeigen Streak.
+- **Known issues / Entscheidungen:** Fotos lokal in `static/uploads/`
+  gespeichert (kein CDN). Kein Bildresizing (Pillow nicht installiert) — bei
+  Bedarf in M7 nachrüsten. `/u/<id>` ist login-required (passend zur
+  späteren Match-Logik).
+- **Next steps:** Vollständiges Datenmodell (Goal, Connection, Message,
+  Checkin) → M3.
 
 ### M3 — Vollständiges Datenmodell · geplant
 
 - **Ziel:** Das ER-Modell von der einen Profil-Entity auf das vollständige Modell
   der Grundfunktionen erweitern.
-- **Geplanter Umfang:** Entities `Goal`, `Photo` (1:n zu User), `Connection`
-  (Match/Partnerschaft mit Status angefragt/aktiv), `Message` (Chat), `Checkin`
-  (mit Datum). Beziehungen, Indizes und Foreign Keys. In der Prototyp-Phase laut
-  `ClaudeCode.md` Schema-Reset statt komplexer Migrationen.
+- **Geplanter Umfang:** Entities `Goal` (optional, da goal_text bereits auf User),
+  `Connection` (Match/Partnerschaft mit Status angefragt/aktiv), `Message` (Chat),
+  `Checkin` (mit Datum). Beziehungen, Indizes und Foreign Keys. Kein separates
+  `Photo`-Modell nötig — M2 speichert Fotos als `photo_url` auf `User`.
+  In der Prototyp-Phase laut `ClaudeCode.md` Schema-Reset statt komplexer Migrationen.
 - **Deckt ab:** NFA-01 (Datenbasis für Match, Chat, Check-in).
 - **Akzeptanz-Fokus:** Alle Grundfunktions-Entities vorhanden und über das ORM
   abfragbar; ER-Diagramm in `docs/` aktualisiert.
@@ -154,10 +168,11 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
 ### M8 — Testlauf, Test-Prozeduren, Bug-Liste, MySQL · geplant
 
 - **Ziel:** Stabilität nachweisen und auf die Zielplattform integrieren.
-- **Geplanter Umfang:** `tests/`-Verzeichnis mit `conftest.py` (App-Fixture,
-  temporäre SQLite-DB); minimaler High-Value-Testsatz (je ein Erfolgs- und ein
-  Fehlerpfad pro Grundfunktion); dokumentierte Test-Prozeduren und priorisierte
-  Bug-Liste (Test-Engineering-Artefakt); Lauf gegen MySQL.
+- **Geplanter Umfang:** Test-Infrastruktur (`tests/conftest.py`, App-Fixture,
+  temporäre SQLite-DB) bereits in M2 angelegt. M8 ergänzt: minimaler
+  High-Value-Testsatz für alle Grundfunktionen (M3–M5); dokumentierte
+  Test-Prozeduren und priorisierte Bug-Liste (Test-Engineering-Artefakt);
+  Lauf gegen MySQL.
 - **Deckt ab:** NFA-01 (AK2 MySQL), NFA-05, NFA-08; Test-Engineering-Deliverable.
 - **Akzeptanz-Fokus:** `pytest` grün; Such-/Match-Abfragen unter zwei Sekunden auf
   Testdaten; App läuft gegen MySQL.
@@ -182,6 +197,5 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   `DATABASE_URL`, ohne Code-Änderung (NFA-01).
 - **Schema-Reset statt Migrationen** in der Prototyp-Phase (laut `ClaudeCode.md`),
   bis Persistenz-Stabilität explizit gefordert ist.
-- **Offen / Risiken:** MySQL-Integration und
-  automatisierte Tests noch ausstehend; M0/M1 wurden vor Einführung von
-  `ClaudeCode.md` gebaut → Smoke-Tests in M8 nachziehen.
+- **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
+  seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.

@@ -1,4 +1,5 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import (
     StringField, PasswordField, SubmitField,
     SelectField, IntegerField, TextAreaField,
@@ -52,3 +53,19 @@ class RegistrationForm(FlaskForm):
         existing = User.query.filter_by(email=field.data.lower().strip()).first()
         if existing:
             raise ValidationError("Diese E-Mail ist bereits registriert.")
+
+
+class EditProfileForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired(), Length(max=80)])
+    age = IntegerField("Alter", validators=[Optional(), NumberRange(min=14, max=120)])
+    city = StringField("Ort", validators=[Optional(), Length(max=80)])
+    goal_category = SelectField("Zielkategorie", choices=GOAL_CATEGORIES, validators=[DataRequired()])
+    goal_text = StringField("Dein konkretes Ziel", validators=[DataRequired(), Length(max=280)])
+    frequency = StringField("Frequenz", validators=[Optional(), Length(max=40)])
+    preferred_checkin_time = StringField("Bevorzugte Check-in-Zeit", validators=[Optional(), Length(max=20)])
+    bio = TextAreaField("Über mich", validators=[Optional(), Length(max=500)])
+    photo = FileField("Profilfoto", validators=[
+        Optional(),
+        FileAllowed(["jpg", "jpeg", "png", "gif", "webp"], "Nur Bilddateien erlaubt."),
+    ])
+    submit = SubmitField("Speichern")

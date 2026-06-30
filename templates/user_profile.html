@@ -13,7 +13,6 @@
         {% if user.age and user.city %} · {% endif %}
         {% if user.city %}{{ user.city }}{% endif %}
       </p>
-      <a href="{{ url_for('main.edit_profile') }}" class="btn btn-ghost btn-sm mt-2">Profil bearbeiten</a>
     </div>
     <div class="streak" title="Aktueller Streak">
       <span class="streak-flame">▲</span>
@@ -23,7 +22,7 @@
   </section>
 
   <section class="card-soft">
-    <p class="section-eyebrow">Mein Commitment</p>
+    <p class="section-eyebrow">Commitment</p>
     {% if user.goal_category %}<span class="pill">{{ user.goal_category }}</span>{% endif %}
     <p class="goal-text">{{ user.goal_text }}</p>
     <div class="commit-facts">
@@ -44,6 +43,10 @@
     <p class="bio">{{ user.bio }}</p>
   </section>
   {% endif %}
+
+  <div>
+    <a href="{{ url_for('main.index') }}" class="btn btn-ghost btn-sm">← Zurück</a>
+  </div>
 
 </div>
 {% endblock %}
