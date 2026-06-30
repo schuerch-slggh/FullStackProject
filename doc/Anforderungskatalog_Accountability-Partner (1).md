@@ -80,12 +80,28 @@ Ein Sprachmodell unterstützt Nutzer bei Motivation und Zielformulierung.
 - **AK1:** Bei einem verpassten Check-in kann der KI-Coach eine motivierende Rückmeldung erzeugen.
 - **AK2:** Der KI-Coach kann ein vage formuliertes Ziel in eine konkretere Formulierung umschreiben.
 
-#### FA-12 — Streak- und Fortschrittsanzeige · *Could*
+#### FA-12 — Streak- und Fortschrittsanzeige · *Should*
 Nutzer sehen ihren Verlauf visuell aufbereitet.
 - **AK1:** Der aktuelle Streak wird numerisch angezeigt.
 - **AK2:** Ein einfaches Diagramm zeigt die Check-in-Historie über die Zeit.
 
-#### FA-13 — Gesendet-/Gelesen- und Online-Status · *Could*
+#### FA-13 — Reputations-/Verlässlichkeits-Score · *Should*
+Jeder Nutzer erhält einen Score, der seine Zuverlässigkeit als Accountability-Partner abbildet. Der Score setzt sich aus zwei Komponenten zusammen: dem Aktivitätsniveau des Nutzers (z.B. Check-in-Quote, Regelmässigkeit) und Bewertungen durch frühere Matching-Partner.
+- **AK1:** Das Aktivitätsniveau fliesst messbar in den Score ein (z.B. Anteil eingehaltener geplanter Check-ins).
+- **AK2:** Ein Matching-Partner kann eine Bewertung abgeben, die in den Score des bewerteten Nutzers einfliesst.
+- **AK3:** Der resultierende Score ist auf dem Profil sichtbar und beeinflusst nachvollziehbar die Match-Reihenfolge.
+
+#### FA-14 — Distanz als Match-Kriterium · *Could*
+Die geografische Distanz zwischen Nutzern fliesst gewichtet in den Match-Score ein.
+- **AK1:** Bei sonst gleichen Kriterien erhält ein näher gelegener Partner einen höheren Match-Score.
+- **AK2:** Die maximale Distanz kann in der Suche als Filter gesetzt werden.
+
+#### FA-15 — Sprachnachrichten · *Could*
+Verbundene Partner können sich gesprochene Nachrichten senden, um z.B. eine Sprache gesprochen zu üben.
+- **AK1:** Eine aufgenommene Sprachnachricht kann gesendet und vom Empfänger abgespielt werden.
+- **AK2:** Sprachnachrichten werden wie Textnachrichten chronologisch im Chatverlauf dargestellt.
+
+#### FA-16 — Gesendet-/Gelesen- und Online-Status · *Could*
 Nutzer sehen den Status ihrer Nachrichten und ob der Partner online ist.
 - **AK1:** Eine gelesene Nachricht wird beim Absender als gelesen markiert.
 - **AK2:** Der Online-Status des Partners wird im Chat angezeigt.

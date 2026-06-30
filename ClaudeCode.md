@@ -4,7 +4,7 @@ Project execution rules for ClaudeCode sessions
 
 ## 1. Role of this file
 
-This file defines how Codex should work in this repository.
+This file defines how Claude Code should work in this repository.
 
 Priority order when information conflicts:
 
