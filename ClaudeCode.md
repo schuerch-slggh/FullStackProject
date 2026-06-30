@@ -4,7 +4,7 @@ Project execution rules for ClaudeCode sessions
 
 ## 1. Role of this file
 
-This file defines how Codex should work in this repository.
+This file defines how ClaudeCode should work in this repository.
 
 Priority order when information conflicts:
 
@@ -282,7 +282,7 @@ A milestone is complete when:
 Expected files at repository root:
 
 1. README.md
-2. CODEX.md
+2. ClaudeCode.md
 3. PROJECT.md
 4. LICENSE optional
 5. .gitignore
@@ -301,7 +301,7 @@ If the project grows, maintain clear structure:
 
 At the start of a session:
 
-1. Read CODEX.md and PROJECT.md.
+1. Read ClaudeCode.md and PROJECT.md.
 2. Identify the next milestone or propose one.
 3. Inspect existing code and tests to confirm the current state.
 4. Execute work strictly using the milestone workflow.
