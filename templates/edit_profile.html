@@ -43,33 +43,6 @@
         </div>
       </div>
 
-      <p class="form-section">Commitment</p>
-
-      <div class="mb-3">
-        {{ form.goal_category.label(class="form-label") }}
-        {{ form.goal_category(class="form-control") }}
-        {% for e in form.goal_category.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-
-      <div class="mb-3">
-        {{ form.goal_text.label(class="form-label") }}
-        {{ form.goal_text(class="form-control") }}
-        {% for e in form.goal_text.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-
-      <div class="row">
-        <div class="col mb-3">
-          {{ form.frequency.label(class="form-label") }}
-          {{ form.frequency(class="form-control", placeholder="z. B. 3x pro Woche") }}
-          {% for e in form.frequency.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-        </div>
-        <div class="col mb-3">
-          {{ form.preferred_checkin_time.label(class="form-label") }}
-          {{ form.preferred_checkin_time(class="form-control", placeholder="z. B. 20:00") }}
-          {% for e in form.preferred_checkin_time.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-        </div>
-      </div>
-
       <p class="form-section">Über mich</p>
 
       <div class="mb-4">
@@ -83,6 +56,14 @@
         <a href="{{ url_for('main.profile') }}" class="btn btn-ghost">Abbrechen</a>
       </div>
     </form>
+
+    <div class="mt-4 pt-3" style="border-top:1px solid var(--border)">
+      <p class="section-eyebrow mb-2">Commitments</p>
+      <p style="font-size:.9rem;color:var(--slate)">
+        Commitments kannst du direkt auf deinem
+        <a href="{{ url_for('main.profile') }}">Profil</a> hinzufügen oder entfernen.
+      </p>
+    </div>
   </div>
 </div>
 {% endblock %}

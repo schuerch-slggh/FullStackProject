@@ -8,10 +8,12 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 
 # Extensions are created here (unbound) and bound to the app inside create_app.
 db = SQLAlchemy()
 login_manager = LoginManager()
+csrf = CSRFProtect()
 
 
 def create_app():
@@ -35,6 +37,7 @@ def create_app():
 
     # Bind extensions to this app.
     db.init_app(app)
+    csrf.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Bitte melde dich zuerst an."

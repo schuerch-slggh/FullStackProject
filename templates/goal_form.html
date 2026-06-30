@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Commitment hinzufügen · Momentum{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card auth-card-wide">
+    <p class="auth-eyebrow">Commitment</p>
+    <h1 class="auth-title">Neues Ziel hinzufügen</h1>
+    <p class="auth-sub">Was willst du regelmässig angehen?</p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="mb-3">
+        {{ form.goal_category.label(class="form-label") }}
+        {{ form.goal_category(class="form-control") }}
+        {% for e in form.goal_category.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        {{ form.goal_text.label(class="form-label") }}
+        {{ form.goal_text(class="form-control", placeholder="z. B. Bachelorarbeit fertig schreiben") }}
+        {% for e in form.goal_text.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+      </div>
+
+      <div class="row">
+        <div class="col mb-4">
+          {{ form.frequency.label(class="form-label") }}
+          {{ form.frequency(class="form-control", placeholder="z. B. 3x pro Woche") }}
+          {% for e in form.frequency.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="col mb-4">
+          {{ form.preferred_checkin_time.label(class="form-label") }}
+          {{ form.preferred_checkin_time(class="form-control", placeholder="z. B. 20:00") }}
+          {% for e in form.preferred_checkin_time.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-ember") }}
+        <a href="{{ url_for('main.profile') }}" class="btn btn-ghost">Abbrechen</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

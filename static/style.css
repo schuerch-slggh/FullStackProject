@@ -232,3 +232,9 @@ textarea.form-control { min-height: 5rem; resize: vertical; }
   .steps { grid-template-columns: 1fr; }
   .row { flex-direction: column; gap: 0; }
 }
+
+/* ---- Goals ---- */
+.goal-divider { border-bottom: 1px solid var(--border); }
+.goal-delete { color: var(--slate); line-height: 1; padding: .25rem .5rem; }
+.goal-delete:hover { color: #b42318; border-color: #b42318; }
+.text-muted-custom { color: var(--slate); font-size: .95rem; }

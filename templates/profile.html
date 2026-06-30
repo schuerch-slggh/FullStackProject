@@ -23,19 +23,41 @@
   </section>
 
   <section class="card-soft">
-    <p class="section-eyebrow">Mein Commitment</p>
-    {% if user.goal_category %}<span class="pill">{{ user.goal_category }}</span>{% endif %}
-    <p class="goal-text">{{ user.goal_text }}</p>
-    <div class="commit-facts">
-      <div>
-        <span class="fact-label">Frequenz</span>
-        <span class="fact-value">{{ user.frequency or "—" }}</span>
-      </div>
-      <div>
-        <span class="fact-label">Check-in</span>
-        <span class="fact-value">{{ user.preferred_checkin_time or "—" }}</span>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <p class="section-eyebrow mb-0">Meine Commitments</p>
+      <a href="{{ url_for('main.add_goal') }}" class="btn btn-ember btn-sm">+ Hinzufügen</a>
+    </div>
+
+    {% for goal in user.goals %}
+    <div class="goal-item{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div class="flex-grow-1">
+          <span class="pill">{{ goal.goal_category }}</span>
+          <p class="goal-text">{{ goal.goal_text }}</p>
+          <div class="commit-facts">
+            <div>
+              <span class="fact-label">Frequenz</span>
+              <span class="fact-value">{{ goal.frequency or "—" }}</span>
+            </div>
+            <div>
+              <span class="fact-label">Check-in</span>
+              <span class="fact-value">{{ goal.preferred_checkin_time or "—" }}</span>
+            </div>
+          </div>
+        </div>
+        <form method="post" action="{{ url_for('main.delete_goal', goal_id=goal.id) }}" style="flex-shrink:0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-ghost goal-delete"
+                  title="Commitment löschen"
+                  onclick="return confirm('Dieses Commitment wirklich löschen?')">✕</button>
+        </form>
       </div>
     </div>
+    {% else %}
+    <p class="text-muted-custom">Noch kein Commitment.
+      <a href="{{ url_for('main.add_goal') }}">Jetzt hinzufügen.</a>
+    </p>
+    {% endfor %}
   </section>
 
   {% if user.bio %}

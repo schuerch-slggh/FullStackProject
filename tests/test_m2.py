@@ -12,12 +12,8 @@ def test_edit_profile_redirects_anonymous(client):
 def test_edit_profile_saves_changes(app, logged_in_client, test_user):
     resp = logged_in_client.post("/profile/edit", data={
         "name": "Neuer Name",
-        "goal_category": "Lernen",
-        "goal_text": "Python meistern",
         "age": "28",
         "city": "Zürich",
-        "frequency": "5x pro Woche",
-        "preferred_checkin_time": "19:00",
         "bio": "Motiviert dabei.",
     }, follow_redirects=True)
     assert resp.status_code == 200
@@ -25,7 +21,6 @@ def test_edit_profile_saves_changes(app, logged_in_client, test_user):
         user = db.session.get(User, test_user)
         assert user.name == "Neuer Name"
         assert user.city == "Zürich"
-        assert user.goal_text == "Python meistern"
 
 
 def test_user_profile_shows_correct_user(app, logged_in_client, test_user):

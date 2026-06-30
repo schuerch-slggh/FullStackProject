@@ -42,7 +42,7 @@ pytest tests/ -v
 
 MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 
-## Routen (Stand M2)
+## Routen
 
 | Route | Beschreibung |
 |---|---|
@@ -51,19 +51,21 @@ MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`
 | `/login` / `/logout` | Authentifizierung |
 | `/profile` | Eigenes Profil (Login erforderlich) |
 | `/profile/edit` | Profil bearbeiten + Foto hochladen |
+| `/goals/new` | Commitment hinzufügen |
+| `/goals/<id>/delete` | Commitment löschen (POST) |
 | `/u/<id>` | Fremdprofil ansehen |
 
 ## Projektstruktur
 
 ```
-__init__.py      App-Factory (create_app)
+__init__.py      App-Factory (create_app, CSRFProtect, DB, Login)
 main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
-views.py         Blueprint: Profil, Bearbeiten, Fremdprofil
-models.py        SQLAlchemy-Entities (User)
-forms.py         WTForms (Login, Registrierung, Profil bearbeiten)
+views.py         Blueprint: Profil, Bearbeiten, Goal-Verwaltung, Fremdprofil
+models.py        SQLAlchemy-Entities (User, Goal)
+forms.py         WTForms (Login, Registrierung, Profil bearbeiten, GoalForm)
 seed.py          CLI: flask seed
 static/          CSS, Uploads (static/uploads/)
 templates/       Jinja2-Templates
-tests/           pytest-Tests
+tests/           pytest-Tests (8 Tests, test_m2 + test_goals)
 ```

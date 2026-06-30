@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 
 from . import db
-from .models import User
+from .models import User, Goal
 from .forms import LoginForm, RegistrationForm
 
 auth_bp = Blueprint("auth", __name__)
@@ -35,16 +35,17 @@ def register():
             name=form.name.data.strip(),
             age=form.age.data,
             city=form.city.data,
-            goal_category=form.goal_category.data,
-            goal_text=form.goal_text.data,
-            frequency=form.frequency.data,
-            preferred_checkin_time=form.preferred_checkin_time.data,
             bio=form.bio.data,
-            # Stabiler Default-Avatar abgeleitet aus der E-Mail
             photo_url=f"https://i.pravatar.cc/300?u={email}",
             streak=0,
         )
         user.set_password(form.password.data)
+        user.goals.append(Goal(
+            goal_category=form.goal_category.data,
+            goal_text=form.goal_text.data,
+            frequency=form.frequency.data,
+            preferred_checkin_time=form.preferred_checkin_time.data,
+        ))
         db.session.add(user)
         db.session.commit()
         login_user(user)

@@ -27,7 +27,7 @@ funktionen; Front- und Backend werden bewertet.
 - [x] **M0** — Setup & vertikaler Durchstich (Login + persönliches Profil)
 - [x] **M1** — Startseite & Registrierung (User selbst anlegen)
 - [x] **M2** — Profil bearbeiten, Foto-Upload, Fremdprofil-Ansicht (View)
-- [ ] **M3** — Vollständiges Datenmodell (Goal, Photo, Connection, Message, Checkin)
+- [ ] **M3** — Vollständiges Datenmodell (Connection, Message, Checkin)
 - [ ] **M4** — Suche, Match-Algorithmus & Verbindung
 - [ ] **M5** — 1:1-Chat & Check-in
 - [ ] **M6** — Sonderfunktionen: Check-in-Schedule, E-Mail-Notification, KI-Coach
@@ -105,21 +105,41 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   gespeichert (kein CDN). Kein Bildresizing (Pillow nicht installiert) — bei
   Bedarf in M7 nachrüsten. `/u/<id>` ist login-required (passend zur
   späteren Match-Logik).
-- **Next steps:** Vollständiges Datenmodell (Goal, Connection, Message,
-  Checkin) → M3.
+- **Next steps:** Vollständiges Datenmodell (Connection, Message, Checkin) → M3.
+  `Goal`-Entity wurde vorgezogen und als Teil dieses Features umgesetzt.
+
+### M2.5 — Mehrere Commitments pro User · erledigt
+
+- **Datum:** 30.06.2026
+- **Ziel:** User kann beliebig viele Commitments anlegen, bearbeiten und löschen.
+- **Was geändert wurde:** `Goal`-Entity in `models.py` (1:n zu User;
+  `goal_category`, `goal_text`, `frequency`, `preferred_checkin_time`); diese
+  Felder von `User` entfernt (Clean Slate); `GoalForm` in `forms.py`;
+  Registrierung legt erstes `Goal` via Relationship an (`auth.py`); Routen
+  `GET/POST /goals/new` und `POST /goals/<id>/delete` (403 bei fremdem Goal)
+  in `views.py`; `goal_form.html` (neu); `profile.html` und `user_profile.html`
+  mit Goal-Liste; `CSRFProtect` in `__init__.py` (macht `csrf_token()` in
+  Templates verfügbar); `seed.py` mit separaten Goal-Objekten; `test_goals.py`
+  (4 Tests).
+- **How to run:** Schema-Reset (`flask --app main seed` nach DB-Löschung) →
+  Profil → „+ Hinzufügen" → neues Commitment. Löschen per ✕-Button.
+- **How to test:** `pytest tests/ -v` → 8 passed (test_m2 + test_goals).
+- **Deckt ab:** Userwunsch mehrere Ziele; Datenbasis für Match-Algorithmus (M4).
+- **Known issues / Entscheidungen:** Kein Edit einzelner Goals (nur Löschen +
+  neu anlegen) — reicht für MVP; Edit-Route optional in M7.
+- **Next steps:** Vollständiges Datenmodell (Connection, Message, Checkin) → M3.
 
 ### M3 — Vollständiges Datenmodell · geplant
 
-- **Ziel:** Das ER-Modell von der einen Profil-Entity auf das vollständige Modell
-  der Grundfunktionen erweitern.
-- **Geplanter Umfang:** Entities `Goal` (optional, da goal_text bereits auf User),
-  `Connection` (Match/Partnerschaft mit Status angefragt/aktiv), `Message` (Chat),
-  `Checkin` (mit Datum). Beziehungen, Indizes und Foreign Keys. Kein separates
-  `Photo`-Modell nötig — M2 speichert Fotos als `photo_url` auf `User`.
-  In der Prototyp-Phase laut `ClaudeCode.md` Schema-Reset statt komplexer Migrationen.
+- **Ziel:** ER-Modell um die verbleibenden Grundfunktions-Entities erweitern.
+- **Geplanter Umfang:** `Connection` (Match/Partnerschaft mit Status
+  angefragt/aktiv), `Message` (Chat 1:1), `Checkin` (mit Datum und User-FK).
+  Beziehungen, Indizes und Foreign Keys. `Goal` (1:n zu User) und `photo_url`
+  auf `User` wurden bereits im Commitment-Feature umgesetzt. Kein separates
+  `Photo`-Modell nötig. Schema-Reset statt Migrationen (Prototyp-Phase).
 - **Deckt ab:** NFA-01 (Datenbasis für Match, Chat, Check-in).
 - **Akzeptanz-Fokus:** Alle Grundfunktions-Entities vorhanden und über das ORM
-  abfragbar; ER-Diagramm in `docs/` aktualisiert.
+  abfragbar.
 
 ### M4 — Suche, Match-Algorithmus & Verbindung · geplant
 
