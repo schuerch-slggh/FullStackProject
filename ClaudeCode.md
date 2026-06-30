@@ -4,7 +4,11 @@ Project execution rules for ClaudeCode sessions
 
 ## 1. Role of this file
 
+<<<<<<< HEAD
 This file defines how ClaudeCode should work in this repository.
+=======
+This file defines how Claude Code should work in this repository.
+>>>>>>> 87e4c6666c16d2366b7258d10a2a481db765d338
 
 Priority order when information conflicts:
 
