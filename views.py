@@ -199,7 +199,7 @@ def send_connection(user_id):
     notify(
         other,
         f"{current_user.name} möchte sich mit dir verbinden",
-        f"Hi {other.name}, {current_user.name} hat dir auf Momentum eine "
+        f"Hi {other.name}, {current_user.name} hat dir auf GrindMate eine "
         "Verbindungsanfrage gesendet.",
     )
     flash(f"Verbindungsanfrage an {other.name} gesendet.", "success")
@@ -307,7 +307,7 @@ def chat(conn_id):
         notify(
             partner,
             f"Neue Nachricht von {current_user.name}",
-            f"Hi {partner.name}, du hast auf Momentum eine neue Nachricht von "
+            f"Hi {partner.name}, du hast auf GrindMate eine neue Nachricht von "
             f"{current_user.name}.",
         )
         return redirect(url_for("main.chat", conn_id=conn.id))

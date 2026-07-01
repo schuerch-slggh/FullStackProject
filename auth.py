@@ -51,7 +51,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         login_user(user)
-        flash("Willkommen bei Momentum! Dein Profil ist angelegt.", "success")
+        flash("Willkommen bei GrindMate! Dein Profil ist angelegt.", "success")
         return redirect(url_for("main.profile"))
     return render_template("register.html", form=form)
 

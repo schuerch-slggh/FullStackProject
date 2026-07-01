@@ -25,7 +25,7 @@ def send_email(to: str, subject: str, body: str) -> bool:
         return False
 
     msg = EmailMessage()
-    msg["From"] = app.config.get("MAIL_SENDER", "noreply@momentum.local")
+    msg["From"] = app.config.get("MAIL_SENDER", "noreply@grindmate.local")
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)

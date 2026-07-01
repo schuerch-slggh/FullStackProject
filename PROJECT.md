@@ -2,7 +2,7 @@
 
 ## 1. Projektzusammenfassung
 
-**Momentum** ist eine Accountability-Partner-Web-App (Flask/Python): Nutzer legen
+**GrindMate** ist eine Accountability-Partner-Web-App (Flask/Python): Nutzer legen
 ein Zielprofil an, finden über eine parametrische Suche und einen Match-Algorithmus
 passende Partner, verbinden sich, chatten 1:1 und halten sich per Check-in
 gegenseitig auf Kurs. Geplante Sonderfunktionen: Check-in-Schedule/Erinnerungen,

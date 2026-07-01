@@ -17,7 +17,7 @@ Tests vor Doku). Arbeite strikt nach dem Meilenstein-Workflow in `ClaudeCode.md`
 
 Modul **Full Stack Web Development FS2026** (Wirtschaftsinformatik, letztes
 Modul). Gruppenprojekt (2–3 Personen), Web-App **from scratch** in Python/Flask.
-Idee: **Accountability-Partner** ("Momentum") — Menschen mit ähnlichen Zielen
+Idee: **Accountability-Partner** ("GrindMate") — Menschen mit ähnlichen Zielen
 finden sich und halten sich per Check-in gegenseitig auf Kurs.
 
 Das Projekt umfasst Frontend, Backend und Datenbank/Datenmodell gleichermaßen;

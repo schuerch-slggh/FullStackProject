@@ -1,4 +1,4 @@
-# ER-Modell — Momentum (Stand M7)
+# ER-Modell — GrindMate (Stand M7)
 
 Alle Tabellen entsprechen dem SQLAlchemy-Schema in `models.py`.
 

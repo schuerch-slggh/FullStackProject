@@ -1,4 +1,4 @@
-# Momentum — Accountability-Partner-App
+# GrindMate — Accountability-Partner-App
 
 Web-App für das Modul Full Stack Web Development FS2026. Nutzer legen ein Zielprofil an, finden passende Partner und halten sich per Check-in gegenseitig auf Kurs.
 
@@ -51,7 +51,7 @@ cp .env.example .env
 | `MAIL_PORT` | SMTP-Port | `587` |
 | `MAIL_USE_TLS` | STARTTLS verwenden (`1`/`0`) | `1` |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | SMTP-Login | _leer_ |
-| `MAIL_SENDER` | Absenderadresse | `noreply@momentum.local` |
+| `MAIL_SENDER` | Absenderadresse | `noreply@grindmate.local` |
 | `ANTHROPIC_API_KEY` | KI-Coach via Anthropic-API (FA-11) | _leer → lokaler Fallback_ |
 
 MySQL-Beispiel: `DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/db`

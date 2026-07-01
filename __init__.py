@@ -47,7 +47,7 @@ def create_app():
     app.config["MAIL_USE_TLS"] = os.environ.get("MAIL_USE_TLS", "1") == "1"
     app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USERNAME")
     app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
-    app.config["MAIL_SENDER"] = os.environ.get("MAIL_SENDER", "noreply@momentum.local")
+    app.config["MAIL_SENDER"] = os.environ.get("MAIL_SENDER", "noreply@grindmate.local")
 
     # Bind extensions to this app.
     db.init_app(app)
