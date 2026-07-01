@@ -225,7 +225,7 @@ def grindprogress():
         reminders=due_reminders(current_user),
         history=checkin_history(current_user),
         partner_progress=partner_progress,
-        feed=_partner_activity(partners),
+        feed=_partner_activity(partners, limit=5),
         appt_proposals=appt_proposals,
         appt_confirmed=appt_confirmed,
     )
