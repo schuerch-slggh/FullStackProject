@@ -367,6 +367,36 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   optional offen.
 - **Next steps:** Testlauf, Test-Prozeduren, Bug-Liste, MySQL-Integration → M8.
 
+### M7.1 — Matches-Tab · erledigt
+
+- **Datum:** 01.07.2026
+- **Ziel:** Eigener `/matches`-Screen mit den Top-3-Partnervorschlägen je Ziel,
+  ohne Filter — löst den seit M4 offenen TODO in `search.html`.
+- **Was geändert wurde:**
+  - `models.py`: neue Domain-Funktion `top_matches_for_goal(goal, limit=3)` —
+    im Unterschied zu `match_score()` (gesamtes Goal-Set beider Nutzer) wertet
+    sie gezielt ein einzelnes Goal aus (Kategorie Pflicht, +1 Frequenz, +1
+    Check-in-Zeit; gleiche 0–4-Skala), Tie-Break über `reputation` (FA-13 AK3).
+  - `views.py`: neue Route `GET /matches` (`login_required`), gruppiert die
+    Ergebnisse pro eigenem Goal inkl. `Connection.between(...)` für den
+    Verbinden/Annehmen/Ablehnen-Status.
+  - `templates/matches.html` (neu): eine Sektion pro Goal, Karten im
+    `result-card`-Stil aus `search.html`; Leerzustände für „kein Goal" und
+    „kein Match für dieses Goal".
+  - `templates/base.html`: Nav-Link „Matches" zwischen Suche und Coach.
+    `templates/search.html`: Verweis auf `/matches`, veralteter TODO-Kommentar
+    entfernt.
+  - `tests/test_matches.py` (neu): 5 Tests (Kategorie-Filter/Selbstausschluss,
+    Ranking bei vollem vs. teilweisem Overlap, `limit`, Route gruppiert nach
+    Goal, Login-Pflicht).
+- **How to run:** Kein Schema-Reset nötig (keine Modelländerung). `/matches`
+  nach Login in der Nav.
+- **How to test:** `pytest tests/ -v` → 47 passed (bisherige 42 + 5 neue).
+- **Deckt ab:** FA-05 (dedizierte Match-Ansicht statt nur gefilterter Suche).
+- **Known issues / Entscheidungen:** Score bewusst pro Goal statt pro Nutzer,
+  damit ein Nutzer mit mehreren Zielen für jedes einzelne passende Partner
+  sieht, statt eines über alle Goals gemittelten Gesamt-Scores.
+
 ### M8 — Testlauf, Test-Prozeduren, Bug-Liste, MySQL · geplant
 
 - **Ziel:** Stabilität nachweisen und auf die Zielplattform integrieren.

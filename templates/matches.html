@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "partials/_components.html" import pill, csrf %}
+{% block title %}Matches · GrindMate{% endblock %}
+
+{% block content %}
+<div class="narrow-wide stack--lg stack">
+
+  <div>
+    <h1>Deine Matches</h1>
+    <p class="muted">Die besten 3 Partner-Vorschläge pro Ziel, nach Übereinstimmung sortiert.</p>
+  </div>
+
+  {% if not matches_by_goal %}
+    <section class="card empty">
+      <p class="empty__title">Noch kein Ziel angelegt.</p>
+      <p class="muted">Lege zuerst ein Commitment an, um passende Partner zu sehen.</p>
+      <a class="btn btn--primary" href="{{ url_for('main.add_goal') }}">Ziel hinzufügen</a>
+    </section>
+  {% endif %}
+
+  {% for goal, results in matches_by_goal %}
+  <section class="stack">
+    <div>
+      {{ pill(goal.goal_category) }}
+      <span class="goal-text">{{ goal.goal_text }}</span>
+    </div>
+
+    {% if results %}
+    <div class="result-list">
+      {% for user, score, connection in results %}
+      <div class="card result-card">
+        <a href="{{ url_for('main.user_profile', user_id=user.id) }}" aria-label="Profil von {{ user.name }}">
+          <img class="avatar avatar--sm" src="{{ user.photo_url }}" alt="Foto von {{ user.name }}">
+        </a>
+        <div class="result-card__body">
+          <a href="{{ url_for('main.user_profile', user_id=user.id) }}" class="result-card__name">{{ user.name }}</a>
+          {% if user.city %}<span class="muted" style="font-size:.9rem"> · {{ user.city }}</span>{% endif %}
+          <div class="result-card__tags">
+            {% for g in user.goals %}{{ pill(g.goal_category) }}{% endfor %}
+          </div>
+        </div>
+
+        <div class="match" title="Match-Score: {{ score }} von 4 Kriterien">
+          <span class="match__value">{{ (score / 4 * 100)|round|int }}%</span>
+          <span class="match__label">Match</span>
+        </div>
+
+        <div style="flex-shrink:0">
+          {% if connection is none %}
+            <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
+              {{ csrf() }}
+              <button class="btn btn--primary btn--sm">Verbinden</button>
+            </form>
+          {% elif connection.status == "requested" %}
+            {% if connection.user1_id == current_user.id %}
+              <span class="muted" style="font-size:.85rem">Anfrage gesendet</span>
+            {% else %}
+              <div class="stack--sm stack">
+                <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
+                  {{ csrf() }}
+                  <button class="btn btn--success btn--sm btn--block">Annehmen</button>
+                </form>
+                <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
+                  {{ csrf() }}
+                  <button class="btn btn--secondary btn--sm btn--block">Ablehnen</button>
+                </form>
+              </div>
+            {% endif %}
+          {% else %}
+            {{ pill("Partner ✓", variant="success") }}
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <section class="card empty">
+      <p class="empty__title">Für dieses Ziel noch kein Match.</p>
+      <p class="muted">Sobald sich jemand mit passendem Ziel registriert, erscheint er hier.</p>
+    </section>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+</div>
+{% endblock %}

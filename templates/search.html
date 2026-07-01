@@ -33,15 +33,14 @@
     </form>
   </section>
 
+  <p class="muted">Nur die Top-3-Vorschläge je Ziel? Siehe <a href="{{ url_for('main.matches') }}">Matches</a>.</p>
+
   {# ---- Ergebnisse / Match-Vorschläge ---- #}
   {% if searched %}
     {% if results %}
       <div class="stack">
         <p class="muted">{{ results|length }} Treffer, nach Übereinstimmung sortiert</p>
 
-        {# TODO: Ein eigener /match-Screen (nur Vorschläge, ohne Filter) bräuchte
-           eine neue Route im Backend. Aktuell liefert die Suche die Match-Logik
-           inkl. absteigender Sortierung nach Score. #}
         <div class="result-list">
           {% for user, score, connection in results %}
           <div class="card result-card">

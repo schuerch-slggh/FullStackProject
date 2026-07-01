@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from . import db
 from .models import (
     User, Goal, Photo, Connection, Message, Checkin, Rating,
-    match_score, due_reminders, checkin_history,
+    match_score, top_matches_for_goal, due_reminders, checkin_history,
 )
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
@@ -182,6 +182,23 @@ def search():
         results = sorted(scored, key=lambda x: (x[1], x[0].reputation), reverse=True)
 
     return render_template("search.html", form=form, results=results, searched=searched)
+
+
+@main_bp.route("/matches")
+@login_required
+def matches():
+    """Top-3-Matches je eigenem Ziel (FA-05), separat von der gefilterten Suche."""
+    matches_by_goal = [
+        (
+            goal,
+            [
+                (user, score, Connection.between(current_user.id, user.id))
+                for user, score in top_matches_for_goal(goal)
+            ],
+        )
+        for goal in current_user.goals
+    ]
+    return render_template("matches.html", matches_by_goal=matches_by_goal)
 
 
 @main_bp.route("/connect/<int:user_id>", methods=["POST"])

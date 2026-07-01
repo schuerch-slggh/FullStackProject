@@ -73,6 +73,7 @@ externe Dienste lauffähig.
 | `/goals/<id>/delete` | Commitment löschen (POST) |
 | `/u/<id>` | Fremdprofil ansehen |
 | `/search` | Partner suchen + Match-Score (GET) |
+| `/matches` | Top-3-Match-Vorschläge je eigenem Ziel, ohne Filter (GET) |
 | `/connect/<id>` | Verbindungsanfrage senden (POST) |
 | `/connections/<id>/accept` | Anfrage annehmen (POST) |
 | `/connections/<id>/decline` | Anfrage ablehnen / zurückziehen (POST) |
@@ -92,16 +93,17 @@ main.py          Einstiegspunkt
 auth.py          Blueprint: Login, Logout, Registrierung
 views.py         Blueprint: Profil (Erinnerungen + Fortschritts-Diagramm), Bearbeiten,
                             Goal-Verwaltung, Fremdprofil, Suche (match_score, nach
-                            Reputation sortiert), Verbindungen (send/accept/decline),
-                            Partner bewerten (rate), Chat (Lese-Markierung), Check-in,
-                            Einstellungen, KI-Coach; before_app_request setzt last_seen
+                            Reputation sortiert), Matches (Top-3 je Ziel), Verbindungen
+                            (send/accept/decline), Partner bewerten (rate), Chat
+                            (Lese-Markierung), Check-in, Einstellungen, KI-Coach;
+                            before_app_request setzt last_seen
 models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin,
                  Rating)
-                 + Domain-Helfer: match_score(), due_reminders(), checkin_history(),
-                   Connection.between()/.active_for()/.involves()/.partner_of();
-                   berechnete Properties User.streak/.reputation/.activity_level/
-                   .avg_rating/.is_online; Spalten User.notify_email/.last_seen,
-                   Message.read_at
+                 + Domain-Helfer: match_score(), top_matches_for_goal(), due_reminders(),
+                   checkin_history(), Connection.between()/.active_for()/.involves()/
+                   .partner_of(); berechnete Properties User.streak/.reputation/
+                   .activity_level/.avg_rating/.is_online; Spalten User.notify_email/
+                   .last_seen, Message.read_at
 forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm, GoalForm,
                           SearchForm, MessageForm, CheckinForm, SettingsForm,
                           CoachGoalForm, RatingForm
@@ -112,8 +114,8 @@ seed.py          CLI: flask seed (10 Profile + Connections, Messages, Checkins)
 conftest.py      sys.path-Fix damit pytest das App-Paket im Repo-Root findet
 static/          style.css, Uploads (static/uploads/)
 templates/       Jinja2-Templates (landing, login, register, profile, edit_profile,
-                 goal_form, user_profile, search, chat, settings, coach)
+                 goal_form, user_profile, search, matches, chat, settings, coach)
 doc/             ER-Modell (diagramms.md), Anforderungskatalog, Personas
-tests/           pytest-Tests (42 Tests: test_m2 + test_goals + test_m3 + test_m4
-                 + test_m5 + test_m6 + test_m7)
+tests/           pytest-Tests (47 Tests: test_m2 + test_goals + test_m3 + test_m4
+                 + test_m5 + test_m6 + test_m7 + test_matches)
 ```

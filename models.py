@@ -344,6 +344,36 @@ def match_score(user_a: User, user_b: User) -> int:
     return score
 
 
+def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, int]]":
+    """Best `limit` other users for one specific goal (FA-05, scoped per goal).
+
+    Unlike `match_score` (which compares a user's whole goal set), this looks
+    only at the given goal so the "Matches" tab can show relevant partners per
+    commitment. Candidates need at least one goal in the same category (+2);
+    a shared frequency or check-in time on that goal add +1 each (0–4, same
+    scale as `match_score`). Ties break by reputation (FA-13 AK3).
+    """
+    candidates = (
+        User.query.join(Goal)
+        .filter(Goal.goal_category == goal.goal_category, User.id != goal.user_id)
+        .distinct()
+        .all()
+    )
+    scored = []
+    for user in candidates:
+        same_category = [g for g in user.goals if g.goal_category == goal.goal_category]
+        score = 2
+        if goal.frequency and any(g.frequency == goal.frequency for g in same_category):
+            score += 1
+        if goal.preferred_checkin_time and any(
+            g.preferred_checkin_time == goal.preferred_checkin_time for g in same_category
+        ):
+            score += 1
+        scored.append((user, score))
+    scored.sort(key=lambda pair: (pair[1], pair[0].reputation), reverse=True)
+    return scored[:limit]
+
+
 def _parse_time(value: str) -> "time | None":
     """Parse a preferred check-in time like '08:00' into a time, else None."""
     try:
