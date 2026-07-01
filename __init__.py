@@ -29,7 +29,13 @@ def create_app():
 
     # Default: SQLite file in the instance/ folder. Switch to MySQL later by
     # setting DATABASE_URL, e.g. mysql+pymysql://user:pass@localhost:3306/db
-    os.makedirs(app.instance_path, exist_ok=True)
+    # instance/ und static/uploads liegen auf Plattformen mit read-only
+    # Filesystem (z.B. Vercel-Serverless, wo nur /tmp beschreibbar ist) nicht
+    # an; ohne DATABASE_URL (MySQL) waere die App dort ohnehin nicht lauffaehig.
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
         "DATABASE_URL", "sqlite:///" + os.path.join(app.instance_path, "app.db")
     )
@@ -38,7 +44,10 @@ def create_app():
     # Foto-Upload: lokales Verzeichnis, max. 5 MB
     app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "uploads")
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
-    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    try:
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    except OSError:
+        pass
 
     # E-Mail-Notification (FA-10): optionales SMTP. Ohne MAIL_SERVER wird nur
     # geloggt, sodass die App ohne Mailserver lauffähig bleibt.
