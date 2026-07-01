@@ -1,55 +1,185 @@
 {% extends "base.html" %}
-{% from "partials/_components.html" import csrf %}
 {% block title %}KI-Coach · GrindMate{% endblock %}
 
 {% block content %}
-<div class="narrow stack">
+<div class="narrow stack--lg stack">
 
   <div>
     <h1>KI-Coach</h1>
-    <p class="muted">Hol dir einen Motivationsschub oder mach ein vages Ziel konkreter.</p>
+    <p class="muted">Dein persönlicher Accountability-Coach — konkret auf deinen Streak, dein Ziel und deine Check-in-Quote.</p>
   </div>
 
-  {# ---- Motivation ---- #}
-  <section class="card">
-    <p class="eyebrow" style="margin-bottom:var(--space-3)">Motivation</p>
-    <p class="muted" style="margin-bottom:var(--space-4)">
-      {% if checked_in_today %}
-        Stark – heute schon eingecheckt. Hol dir trotzdem einen Schub.
-      {% else %}
-        Heute noch nicht eingecheckt? Hol dir Motivation vom Coach.
+  {# ===== Bereich 1 — Situationsbezogener Kopf ===== #}
+  <section class="card card--accent coach-head">
+    <p class="eyebrow eyebrow--accent" style="margin-bottom:var(--space-3)">Coach-Status</p>
+    <p class="coach-headline">{{ headline }}</p>
+    <div class="coach-stats">
+      <div class="stat stat--accent">
+        <span class="stat__value">{{ facts.streak }}</span>
+        <span class="stat__label">Tage Streak</span>
+      </div>
+      <div class="stat">
+        <span class="stat__value">{{ facts.quote }}%</span>
+        <span class="stat__label">Check-in-Quote</span>
+      </div>
+      <div class="stat">
+        <span class="stat__value">{{ facts.longest_streak }}</span>
+        <span class="stat__label">Längster Lauf</span>
+      </div>
+      {% if facts.best_weekday %}
+      <div class="stat">
+        <span class="stat__value coach-stat-day">{{ facts.best_weekday[:2]|upper }}</span>
+        <span class="stat__label">Aktivster Tag</span>
+      </div>
       {% endif %}
-    </p>
-    <form method="post" action="{{ url_for('main.coach_motivate') }}">
-      {{ csrf() }}
-      <button type="submit" class="btn btn--primary">Motivation holen</button>
-    </form>
-    {% if motivation %}
-    <div class="coach-bubble" style="margin-top:var(--space-4)">{{ motivation }}</div>
-    {% endif %}
+    </div>
   </section>
 
-  {# ---- Ziel schärfen ---- #}
-  <section class="card">
-    <p class="eyebrow" style="margin-bottom:var(--space-3)">Ziel schärfen</p>
-    <p class="muted" style="margin-bottom:var(--space-4)">
-      Formuliere ein vages Ziel – der Coach macht es konkreter und messbar.
-    </p>
-    <form method="post" action="{{ url_for('main.coach_sharpen') }}" class="stack--sm stack">
-      {{ form.hidden_tag() }}
-      {{ form.goal_text(class="input", rows="2", placeholder="z.B. mehr Sport machen") }}
-      {% for e in form.goal_text.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      <div><button type="submit" class="btn btn--primary">Konkreter machen</button></div>
-    </form>
-    {% if suggestion %}
-    <div class="coach-bubble" style="margin-top:var(--space-4)">
-      <p class="stat__label" style="margin-bottom:.25rem">Dein Ziel</p>
-      <p style="margin-bottom:var(--space-3)">{{ original }}</p>
-      <p class="stat__label" style="margin-bottom:.25rem">Vorschlag</p>
-      <p style="margin:0">{{ suggestion }}</p>
+  {# ===== Bereich 2 — Chat mit dem Coach ===== #}
+  <section class="card chat">
+    <div class="chat-head" style="margin-bottom:var(--space-2)">
+      <span class="chat-partner__id">
+        <span class="chat-partner__name">Coach</span>
+        <span class="presence presence--online"><span class="presence__dot"></span>online</span>
+      </span>
     </div>
-    {% endif %}
+
+    <div class="chat-thread" id="coach-thread" aria-live="polite">
+      {# Start-Nachricht (nur Anzeige, nicht Teil des gesendeten Verlaufs) #}
+      <div class="chat-row chat-row--theirs">
+        <div class="bubble">
+          <p class="bubble__text">Wie kann ich dir weiterhelfen?</p>
+        </div>
+      </div>
+    </div>
+
+    <form class="chat-compose" id="coach-form" style="margin-top:var(--space-2)">
+      <textarea class="input" id="coach-input" rows="2" maxlength="2000"
+                placeholder="Frag den Coach …" aria-label="Nachricht an den Coach"
+                autocomplete="off"></textarea>
+      <button type="submit" class="btn btn--primary" id="coach-send">Senden</button>
+    </form>
+
+    {# ===== Bereich 3 — Drei Chat-Vorschläge ===== #}
+    <div class="coach-suggests" id="coach-suggests" style="margin-top:var(--space-3)">
+      <button type="button" class="coach-chip">Bring mir Neues zu meinem Thema bei</button>
+      <button type="button" class="coach-chip">Wie könnte ich meine Ziele einfacher erreichen?</button>
+      <button type="button" class="coach-chip">Welche Ausbaumöglichkeiten gäbe es noch?</button>
+    </div>
   </section>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+
+  const ENDPOINT = "{{ url_for('main.coach_message') }}";
+  const CSRF = "{{ csrf_token() }}";
+
+  const thread   = document.getElementById("coach-thread");
+  const form     = document.getElementById("coach-form");
+  const input    = document.getElementById("coach-input");
+  const sendBtn  = document.getElementById("coach-send");
+  const suggests = document.getElementById("coach-suggests");
+
+  // Laufender Konversationsverlauf (nur user/assistant-Turns, ohne Start-Bubble).
+  const history = [];
+  let busy = false;
+
+  function scrollToEnd() { thread.scrollTop = thread.scrollHeight; }
+
+  // Bubble erzeugen (mine = eigene Nachricht rechts, sonst Coach links).
+  function addBubble(text, mine) {
+    const row = document.createElement("div");
+    row.className = "chat-row " + (mine ? "chat-row--mine" : "chat-row--theirs");
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    const p = document.createElement("p");
+    p.className = "bubble__text";
+    p.textContent = text;                 // textContent → kein HTML-Injection
+    bubble.appendChild(p);
+    row.appendChild(bubble);
+    thread.appendChild(row);
+    scrollToEnd();
+    return row;
+  }
+
+  // Animierter „Coach tippt“-Platzhalter.
+  function addTyping() {
+    const row = document.createElement("div");
+    row.className = "chat-row chat-row--theirs";
+    row.innerHTML =
+      '<div class="bubble coach-typing" aria-label="Coach tippt">' +
+      '<span></span><span></span><span></span></div>';
+    thread.appendChild(row);
+    scrollToEnd();
+    return row;
+  }
+
+  function setBusy(state) {
+    busy = state;
+    input.disabled = state;
+    sendBtn.disabled = state;
+    suggests.querySelectorAll(".coach-chip").forEach(c => c.disabled = state);
+  }
+
+  async function send(text) {
+    text = (text || "").trim();
+    if (!text || busy) return;
+
+    addBubble(text, true);
+    history.push({ role: "user", content: text });
+    input.value = "";
+    setBusy(true);
+    const typing = addTyping();
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+        body: JSON.stringify({ messages: history }),
+      });
+      const data = await res.json().catch(() => ({}));
+      typing.remove();
+
+      if (res.ok && data.reply) {
+        addBubble(data.reply, false);
+        history.push({ role: "assistant", content: data.reply });
+      } else {
+        // Freundlicher Fallback statt Crash; nicht in den Verlauf aufnehmen.
+        addBubble("Da ist gerade etwas schiefgelaufen. Versuch es gleich nochmal — dein Fortschritt bleibt erhalten.", false);
+      }
+    } catch (e) {
+      typing.remove();
+      addBubble("Der Coach ist im Moment nicht erreichbar. Prüf kurz deine Verbindung und versuch es erneut.", false);
+    } finally {
+      setBusy(false);
+      input.focus();
+    }
+  }
+
+  // Absenden per Button / Formular.
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    send(input.value);
+  });
+
+  // Enter sendet, Shift+Enter macht einen Zeilenumbruch.
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send(input.value);
+    }
+  });
+
+  // Vorschlags-Chips: Text als Nutzernachricht senden.
+  suggests.addEventListener("click", function (e) {
+    const chip = e.target.closest(".coach-chip");
+    if (chip && !busy) send(chip.textContent);
+  });
+})();
+</script>
 {% endblock %}

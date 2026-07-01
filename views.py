@@ -1,9 +1,13 @@
 """Main controller: landing page, profile, goal management, search,
 connections, chat & check-in."""
 import os
+from collections import Counter
 from datetime import date, datetime
 
-from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort, request
+from flask import (
+    Blueprint, render_template, redirect, url_for, flash, current_app,
+    abort, request, jsonify,
+)
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
@@ -14,10 +18,10 @@ from .models import (
 )
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
-    SettingsForm, CoachGoalForm, RatingForm,
+    SettingsForm, RatingForm,
 )
 from .mailer import notify
-from .coach import sharpen_goal, motivational_message
+from .coach import chat_reply, coach_headline
 
 main_bp = Blueprint("main", __name__)
 
@@ -360,41 +364,109 @@ def settings():
     return render_template("settings.html", form=form)
 
 
+_WEEKDAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+# Grenzen für die Chat-Route (Abuse-/Kosten-Schutz und Datensparsamkeit).
+_MAX_TURNS = 20
+_MAX_MSG_LEN = 2000
+
+
+def _longest_streak(dates: set) -> int:
+    """Längster zusammenhängender Check-in-Lauf aller Zeiten (Tage)."""
+    if not dates:
+        return 0
+    ordered = sorted(dates)
+    longest = run = 1
+    for prev, cur in zip(ordered, ordered[1:]):
+        run = run + 1 if (cur - prev).days == 1 else 1
+        longest = max(longest, run)
+    return longest
+
+
+def _coach_facts(user):
+    """Berechnete Fakten für den situativen Kopf-Satz (rein aus der DB)."""
+    dates = {c.checkin_date for c in user.checkins}
+    best_weekday = None
+    if dates:
+        counts = Counter(d.weekday() for d in dates)
+        best_weekday = _WEEKDAYS_DE[counts.most_common(1)[0][0]]
+    days_since = (date.today() - max(dates)).days if dates else None
+    return {
+        "streak": user.streak,
+        "longest_streak": _longest_streak(dates),
+        "quote": round(user.activity_level * 100),
+        "checked_in": _checked_in_today(user),
+        "best_weekday": best_weekday,
+        "days_since_checkin": days_since,
+    }
+
+
+def _coach_context(user):
+    """Kompakter, datensparsamer Nutzerkontext für die API (NFA-09)."""
+    goal = user.goals[0] if user.goals else None
+    return {
+        "name": user.name.split()[0] if user.name else None,
+        "goal": goal.goal_text if goal else None,
+        "category": goal.goal_category if goal else None,
+        "streak": user.streak,
+        "quote": round(user.activity_level * 100),
+        "checked_in": _checked_in_today(user),
+    }
+
+
+def _sanitize_chat(raw):
+    """Konversationsverlauf aus dem Request säubern und validieren.
+
+    Nur `user`/`assistant`-Rollen, gekürzte Inhalte, führende Assistant-
+    Nachrichten entfernt, auf die letzten Turns begrenzt; die letzte Nachricht
+    muss vom Nutzer stammen. Gibt [] zurück, wenn nichts Gültiges übrig bleibt.
+    """
+    if not isinstance(raw, list):
+        return []
+    cleaned = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role not in ("user", "assistant") or not isinstance(content, str):
+            continue
+        content = content.strip()[:_MAX_MSG_LEN]
+        if not content:
+            continue
+        cleaned.append({"role": role, "content": content})
+    # Führende Assistant-Nachrichten entfernen (API verlangt Start mit user).
+    while cleaned and cleaned[0]["role"] == "assistant":
+        cleaned.pop(0)
+    cleaned = cleaned[-_MAX_TURNS:]
+    if not cleaned or cleaned[-1]["role"] != "user":
+        return []
+    return cleaned
+
+
 @main_bp.route("/coach")
 @login_required
 def coach():
-    """KI-Coach-Seite: Motivation holen und Ziel schärfen (FA-11)."""
+    """KI-Coach-Seite: situativer Kopf-Satz, Chat-Coach und Vorschläge (FA-11)."""
+    facts = _coach_facts(current_user)
     return render_template(
-        "coach.html", form=CoachGoalForm(),
-        checked_in_today=_checked_in_today(current_user),
-        motivation=None, suggestion=None, original=None,
+        "coach.html",
+        facts=facts,
+        headline=coach_headline(facts),
     )
 
 
-@main_bp.route("/coach/motivate", methods=["POST"])
+@main_bp.route("/coach/message", methods=["POST"])
 @login_required
-def coach_motivate():
-    """Motivierende Rückmeldung, abhängig vom Check-in-Status (FA-11 AK1)."""
-    goal_text = current_user.goals[0].goal_text if current_user.goals else None
-    message = motivational_message(current_user.streak, goal_text)
-    return render_template(
-        "coach.html", form=CoachGoalForm(),
-        checked_in_today=_checked_in_today(current_user),
-        motivation=message, suggestion=None, original=None,
-    )
+def coach_message():
+    """Chat-Endpunkt: nimmt den Verlauf als JSON, ergänzt serverseitig System-
+    Prompt + Nutzerkontext und ruft die Anthropic-API auf (FA-11, NFA-09).
 
-
-@main_bp.route("/coach/sharpen", methods=["POST"])
-@login_required
-def coach_sharpen():
-    """Schreibt ein vage formuliertes Ziel konkreter um (FA-11 AK2)."""
-    form = CoachGoalForm()
-    suggestion = original = None
-    if form.validate_on_submit():
-        original = form.goal_text.data.strip()
-        suggestion = sharpen_goal(original)
-    return render_template(
-        "coach.html", form=form,
-        checked_in_today=_checked_in_today(current_user),
-        motivation=None, suggestion=suggestion, original=original,
-    )
+    Das Frontend spricht ausschliesslich mit dieser Route, nie direkt mit der
+    externen API. Der API-Key bleibt serverseitig in der Umgebungsvariablen.
+    """
+    data = request.get_json(silent=True) or {}
+    messages = _sanitize_chat(data.get("messages"))
+    if not messages:
+        return jsonify(error="Keine gültige Nachricht erhalten."), 400
+    reply = chat_reply(messages, _coach_context(current_user))
+    return jsonify(reply=reply)

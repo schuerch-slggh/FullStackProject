@@ -9,6 +9,21 @@ import os
 
 MODEL = "claude-opus-4-8"
 MAX_TOKENS = 200
+CHAT_MAX_TOKENS = 400
+
+# Fester Ton & Rahmen des Coachs (System-Prompt). Enthält KEINE Nutzerdaten —
+# der kompakte Nutzerkontext wird pro Anfrage separat angehängt (NFA-09).
+COACH_SYSTEM = (
+    "Du bist der GrindMate-Coach, ein persönlicher Accountability-Coach. "
+    "Ton: motivierend, konkret, positiv-verbindlich — Druck ja, aber "
+    "unterstützend, nie herablassend. Antworte auf Deutsch, kurz und praxisnah "
+    "(1–4 Sätze, gern mit einer konkreten nächsten Handlung). Beziehe dich, wo "
+    "sinnvoll, auf Streak, Ziel und Check-in-Quote der Person. Bleib strikt beim "
+    "Thema Zielerreichung, Motivation, Gewohnheiten und Lernen. Gib keine "
+    "medizinischen, finanziellen, rechtlichen oder anderweitig heiklen Ratschläge "
+    "— verweise dann freundlich an Fachpersonen. Erfinde keine Fakten über die "
+    "Person, die nicht im Kontext stehen."
+)
 
 
 def _client():
@@ -87,3 +102,127 @@ def _fallback_motivation(streak: int) -> str:
         f"{streak} Tage am Stück – stark! Bleib dran, ein Tag nach dem anderen. "
         "Dein nächster Check-in hält die Kette am Leben."
     )
+
+
+# ---------------------------------------------------------------------------
+# Chat-Coach (Konversation mit Verlauf) + situativer Kopf-Satz (FA-11)
+# ---------------------------------------------------------------------------
+
+def _chat(system: str, messages: list[dict]) -> "str | None":
+    """Mehrstufiger Chat-Call mit Verlauf; None, wenn kein Client verfügbar."""
+    client = _client()
+    if client is None:
+        return None
+    msg = client.messages.create(
+        model=MODEL,
+        max_tokens=CHAT_MAX_TOKENS,
+        system=system,
+        messages=messages,
+    )
+    return next((b.text for b in msg.content if b.type == "text"), "").strip() or None
+
+
+def context_block(ctx: dict) -> str:
+    """Kompakter Nutzerkontext als eine Zeile — datensparsam (NFA-09).
+
+    Enthält bewusst nur Name (Vorname), Ziel, Kategorie, Streak und Quote —
+    keine E-Mail, kein Passwort, keine fremden Chat-Inhalte.
+    """
+    parts = []
+    if ctx.get("name"):
+        parts.append(f"Name: {ctx['name']}")
+    if ctx.get("goal"):
+        cat = f" (Kategorie {ctx['category']})" if ctx.get("category") else ""
+        parts.append(f"Ziel: {ctx['goal']}{cat}")
+    else:
+        parts.append("Ziel: noch keines gesetzt")
+    parts.append(f"Streak: {ctx.get('streak', 0)} Tage")
+    parts.append(f"Check-in-Quote (14 Tage): {ctx.get('quote', 0)}%")
+    parts.append(f"Heute eingecheckt: {'ja' if ctx.get('checked_in') else 'nein'}")
+    return "AKTUELLER NUTZER — " + " · ".join(parts)
+
+
+def build_system_prompt(ctx: dict) -> str:
+    """Fester Coach-Prompt + angehängter Nutzerkontext."""
+    return COACH_SYSTEM + "\n\n" + context_block(ctx)
+
+
+def chat_reply(messages: list[dict], ctx: dict) -> str:
+    """Coach-Antwort auf den Konversationsverlauf; Fallback ohne API."""
+    reply = _chat(build_system_prompt(ctx), messages)
+    return reply or _fallback_chat(messages, ctx)
+
+
+def coach_headline(facts: dict) -> str:
+    """Ein situativer Kopf-Satz, serverseitig aus echten Fakten formuliert."""
+    result = _generate(headline_prompt(facts))
+    return result or _fallback_headline(facts)
+
+
+def headline_prompt(facts: dict) -> str:
+    """Prompt für den Kopf-Satz — nur berechnete Fakten, keine sensiblen Daten."""
+    streak = facts.get("streak", 0)
+    quote = facts.get("quote", 0)
+    checked_in = facts.get("checked_in")
+    longest = facts.get("longest_streak", 0)
+    best_day = facts.get("best_weekday")
+    missed = facts.get("days_since_checkin")
+
+    lage = [
+        f"aktueller Streak: {streak} Tage",
+        f"längster Streak bisher: {longest} Tage",
+        f"Check-in-Quote der letzten 14 Tage: {quote}%",
+        f"heute schon eingecheckt: {'ja' if checked_in else 'nein'}",
+    ]
+    if best_day:
+        lage.append(f"aktivster Wochentag: {best_day}")
+    if missed is not None:
+        lage.append(f"letzter Check-in vor {missed} Tag(en)")
+
+    return (
+        "Formuliere EINEN kurzen, motivierenden Satz auf Deutsch (max. 20 Wörter) "
+        "für die Startseite des Coachs, passend zur folgenden Lage. Nenne eine "
+        "konkrete Zahl. Bei laufendem Streak bestärkend; nach verpasstem Check-in "
+        "aufbauend statt tadelnd. Gib nur den Satz zurück, ohne Anführungszeichen.\n\n"
+        "Lage: " + "; ".join(lage) + "."
+    )
+
+
+def _fallback_chat(messages: list[dict], ctx: dict) -> str:
+    """Freundliche, datenbasierte Antwort, wenn die API nicht verfügbar ist."""
+    streak = ctx.get("streak", 0)
+    goal = ctx.get("goal")
+    ziel = f" für „{goal}“" if goal else ""
+    if streak > 0:
+        return (
+            f"Der Coach ist gerade offline – aber deine {streak} Tage Streak"
+            f"{ziel} sprechen für sich. Definiere die kleinste nächste Handlung "
+            "und mach sie noch heute."
+        )
+    return (
+        "Der Coach ist gerade offline. Fang klein an: lege eine konkrete, "
+        f"messbare nächste Handlung{ziel} fest und checke heute ein – so startet "
+        "dein Streak."
+    )
+
+
+def _fallback_headline(facts: dict) -> str:
+    """Kopf-Satz aus den Fakten zusammengesetzt, wenn die API nicht antwortet."""
+    streak = facts.get("streak", 0)
+    quote = facts.get("quote", 0)
+    checked_in = facts.get("checked_in")
+    longest = facts.get("longest_streak", 0)
+
+    if streak <= 0:
+        return (
+            "Noch kein aktiver Streak – heute ist der beste Tag, den ersten "
+            "Check-in zu setzen."
+        )
+    if streak >= longest and streak > 1:
+        return f"{streak} Tage am Stück – dein bisher längster Lauf. Weiter so!"
+    if not checked_in:
+        return (
+            f"{streak} Tage Streak stehen auf dem Spiel – ein kurzer Check-in "
+            "heute hält die Kette am Leben."
+        )
+    return f"{streak} Tage dran, {quote}% Check-in-Quote – solide Arbeit, bleib dran."
