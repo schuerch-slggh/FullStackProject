@@ -27,7 +27,7 @@
 
     {% if results %}
     <div class="result-list">
-      {% for user, score, connection in results %}
+      {% for user, score, breakdown, connection in results %}
       <div class="card result-card">
         <a href="{{ url_for('main.user_profile', user_id=user.id) }}" aria-label="Profil von {{ user.name }}">
           <img class="avatar avatar--sm" src="{{ user.photo_url }}" alt="Foto von {{ user.name }}">
@@ -43,6 +43,13 @@
         <div class="match" title="Match-Score: {{ score }} von 4 Kriterien">
           <span class="match__value">{{ (score / 4 * 100)|round|int }}%</span>
           <span class="match__label">Match</span>
+          <ul class="match__breakdown">
+            {% for item in breakdown %}
+            <li class="match__criterion {{ 'match__criterion--yes' if item.matched else 'match__criterion--no' }}">
+              {{ item.label }}
+            </li>
+            {% endfor %}
+          </ul>
         </div>
 
         <div style="flex-shrink:0">

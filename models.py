@@ -320,6 +320,37 @@ class Rating(db.Model):
         return f"<Rating {self.id} {self.rater_id}→{self.ratee_id} {self.stars}★>"
 
 
+# Named so the UI can show *why* two users matched, not just the percentage.
+MATCH_CRITERIA = (
+    ("category", "gleiche Zielkategorie", 2),
+    ("frequency", "passende Frequenz", 1),
+    ("checkin_time", "passende Check-in-Zeit", 1),
+)
+MATCH_MAX_SCORE = sum(points for _, _, points in MATCH_CRITERIA)
+
+
+def _shared_criteria(user_a: User, user_b: User) -> "dict[str, bool]":
+    """Which of the three match criteria user_a and user_b share, across all goals."""
+    cats_a = {g.goal_category for g in user_a.goals}
+    cats_b = {g.goal_category for g in user_b.goals}
+    freqs_a = {g.frequency for g in user_a.goals if g.frequency}
+    freqs_b = {g.frequency for g in user_b.goals if g.frequency}
+    times_a = {g.preferred_checkin_time for g in user_a.goals if g.preferred_checkin_time}
+    times_b = {g.preferred_checkin_time for g in user_b.goals if g.preferred_checkin_time}
+    return {
+        "category": bool(cats_a & cats_b),
+        "frequency": bool(freqs_a & freqs_b),
+        "checkin_time": bool(times_a & times_b),
+    }
+
+
+def _breakdown_from_shared(shared: "dict[str, bool]") -> "list[dict]":
+    return [
+        {"label": label, "matched": shared[key], "points": points}
+        for key, label, points in MATCH_CRITERIA
+    ]
+
+
 def match_score(user_a: User, user_b: User) -> int:
     """Match score between two users based on goal overlap (0–4).
 
@@ -327,21 +358,37 @@ def match_score(user_a: User, user_b: User) -> int:
     +1  at least one shared frequency
     +1  at least one shared preferred check-in time
     """
-    cats_a = {g.goal_category for g in user_a.goals}
-    cats_b = {g.goal_category for g in user_b.goals}
-    freqs_a = {g.frequency for g in user_a.goals if g.frequency}
-    freqs_b = {g.frequency for g in user_b.goals if g.frequency}
-    times_a = {g.preferred_checkin_time for g in user_a.goals if g.preferred_checkin_time}
-    times_b = {g.preferred_checkin_time for g in user_b.goals if g.preferred_checkin_time}
+    shared = _shared_criteria(user_a, user_b)
+    return sum(points for key, _, points in MATCH_CRITERIA if shared[key])
 
-    score = 0
-    if cats_a & cats_b:
-        score += 2
-    if freqs_a & freqs_b:
-        score += 1
-    if times_a & times_b:
-        score += 1
-    return score
+
+def match_breakdown(user_a: User, user_b: User) -> "list[dict]":
+    """Per-criterion detail behind `match_score`, for UI transparency.
+
+    Returns one dict per criterion with `label`, `matched` and `points`, so
+    the search/matches views can show *why* a percentage came out as it did.
+    """
+    return _breakdown_from_shared(_shared_criteria(user_a, user_b))
+
+
+def _goal_shared_criteria(goal: "Goal", user: User) -> "dict[str, bool]":
+    """Which criteria `user` shares with one specific goal (Matches tab, FA-05)."""
+    same_category = [g for g in user.goals if g.goal_category == goal.goal_category]
+    return {
+        "category": bool(same_category),
+        "frequency": bool(
+            goal.frequency and any(g.frequency == goal.frequency for g in same_category)
+        ),
+        "checkin_time": bool(
+            goal.preferred_checkin_time
+            and any(g.preferred_checkin_time == goal.preferred_checkin_time for g in same_category)
+        ),
+    }
+
+
+def match_breakdown_for_goal(goal: "Goal", user: User) -> "list[dict]":
+    """Per-criterion detail behind one goal's match score (Matches tab)."""
+    return _breakdown_from_shared(_goal_shared_criteria(goal, user))
 
 
 def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, int]]":
@@ -359,17 +406,10 @@ def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, int]
         .distinct()
         .all()
     )
-    scored = []
-    for user in candidates:
-        same_category = [g for g in user.goals if g.goal_category == goal.goal_category]
-        score = 2
-        if goal.frequency and any(g.frequency == goal.frequency for g in same_category):
-            score += 1
-        if goal.preferred_checkin_time and any(
-            g.preferred_checkin_time == goal.preferred_checkin_time for g in same_category
-        ):
-            score += 1
-        scored.append((user, score))
+    scored = [
+        (user, sum(points for key, _, points in MATCH_CRITERIA if _goal_shared_criteria(goal, user)[key]))
+        for user in candidates
+    ]
     scored.sort(key=lambda pair: (pair[1], pair[0].reputation), reverse=True)
     return scored[:limit]
 

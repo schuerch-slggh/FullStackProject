@@ -14,7 +14,8 @@ from werkzeug.utils import secure_filename
 from . import db
 from .models import (
     User, Goal, Photo, Connection, Message, Checkin, Rating,
-    match_score, top_matches_for_goal, due_reminders, checkin_history,
+    match_score, match_breakdown, match_breakdown_for_goal, top_matches_for_goal,
+    due_reminders, checkin_history,
 )
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
@@ -343,7 +344,12 @@ def search():
 
         users = query.distinct().all()
         scored = [
-            (u, match_score(current_user, u), Connection.between(current_user.id, u.id))
+            (
+                u,
+                match_score(current_user, u),
+                match_breakdown(current_user, u),
+                Connection.between(current_user.id, u.id),
+            )
             for u in users
         ]
         # Primär nach Match-Score, bei Gleichstand nach Reputation (FA-13 AK3) —
@@ -361,7 +367,12 @@ def matches():
         (
             goal,
             [
-                (user, score, Connection.between(current_user.id, user.id))
+                (
+                    user,
+                    score,
+                    match_breakdown_for_goal(goal, user),
+                    Connection.between(current_user.id, user.id),
+                )
                 for user, score in top_matches_for_goal(goal)
             ],
         )
