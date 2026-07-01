@@ -87,3 +87,42 @@
 {% macro csrf() %}
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 {% endmacro %}
+
+{# --- Termin: Zusagen/Ablehnen (nur Empfänger, offener Vorschlag) --------
+   next_url = lokales Redirect-Ziel nach der Aktion (Chat oder Grindprogress). #}
+{% macro appt_actions(appt, next_url="") %}
+  <div class="appt-actions">
+    <form method="post" action="{{ url_for('main.appointment_confirm', appointment_id=appt.id) }}">
+      {{ csrf() }}<input type="hidden" name="next" value="{{ next_url }}">
+      <button class="btn btn--primary btn--sm">Zusagen</button>
+    </form>
+    <form method="post" action="{{ url_for('main.appointment_decline', appointment_id=appt.id) }}">
+      {{ csrf() }}<input type="hidden" name="next" value="{{ next_url }}">
+      <button class="btn btn--secondary btn--sm">Ablehnen</button>
+    </form>
+  </div>
+{% endmacro %}
+
+{# --- Terminvorschlag als Chat-Eintrag ----------------------------------
+   Zeigt Datum+Uhrzeit; beim Empfänger eines offenen Vorschlags die Aktionen,
+   sonst den Status. `current_user` steht in Templates global zur Verfügung. #}
+{% macro appointment_entry(appt, next_url="") %}
+  {% set mine = appt.proposed_by == current_user.id %}
+  <div class="chat-row {{ 'chat-row--mine' if mine else 'chat-row--theirs' }}">
+    <div class="bubble appt-bubble appt-bubble--{{ appt.status }}">
+      <p class="appt-bubble__label">▣ Terminvorschlag</p>
+      <p class="appt-bubble__when">{{ appt.scheduled_at.strftime('%d.%m.%Y · %H:%M') }} Uhr</p>
+      {% if appt.status == 'vorgeschlagen' %}
+        {% if appt.recipient_id == current_user.id %}
+          {{ appt_actions(appt, next_url) }}
+        {% else %}
+          <p class="appt-bubble__status">wartet auf Antwort …</p>
+        {% endif %}
+      {% elif appt.status == 'bestätigt' %}
+        <p class="appt-bubble__status appt-bubble__status--ok">bestätigt ✓</p>
+      {% else %}
+        <p class="appt-bubble__status appt-bubble__status--off">abgelehnt</p>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}

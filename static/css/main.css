@@ -770,6 +770,60 @@ input[type="file"]::file-selector-button {
 .chat-compose { display: flex; gap: var(--space-3); align-items: flex-end; }
 .chat-compose textarea { flex: 1; min-height: 3rem; }
 
+/* ---- Terminvorschlag im Chat ---- */
+/* Termin-Bubble: klar als technischer Eintrag erkennbar (Signal-Kante) */
+.appt-bubble { border-left: 2px solid var(--signal); }
+.appt-bubble--abgelehnt { border-left-color: var(--line-strong); opacity: .8; }
+.appt-bubble__label {
+  font-family: var(--font-mono);
+  font-size: .64rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: .2rem;
+}
+.appt-bubble__when { font-family: var(--font-mono); font-size: .95rem; font-weight: 500; color: var(--text); }
+.appt-bubble__status {
+  display: inline-block;
+  margin-top: .4rem;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  letter-spacing: .04em;
+  color: var(--text-dim);
+}
+.appt-bubble__status--ok  { color: var(--signal); }
+.appt-bubble__status--off { color: var(--text-faint); }
+.appt-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.appt-actions form { margin: 0; }
+
+/* Dezentes Vorschlags-Formular unter dem Nachrichtenfeld */
+.appt-propose { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.appt-propose__label { flex: 0 0 auto; margin: 0; }
+.appt-propose__field { width: auto; flex: 0 1 auto; }
+
+/* ---- Grindprogress: Offene Termine ---- */
+.appt-group-label {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-3);
+}
+.appt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+.appt-row:first-of-type { border-top: none; }
+.appt-row__info { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.appt-row__when { font-family: var(--font-mono); font-size: .95rem; font-weight: 500; color: var(--text); }
+.appt-row__hint { font-family: var(--font-mono); font-size: .72rem; color: var(--text-faint); }
+
 /* ---- KI-Coach ---- */
 .coach-bubble {
   background: var(--surface-2);

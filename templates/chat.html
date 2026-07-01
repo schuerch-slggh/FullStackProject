@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_components.html" import chat_bubble %}
+{% from "partials/_components.html" import chat_bubble, appointment_entry, csrf with context %}
 {% block title %}Chat mit {{ partner.name }} · GrindMate{% endblock %}
 
 {% block content %}
@@ -19,16 +19,20 @@
     <a href="{{ url_for('main.profile') }}" class="btn btn--secondary btn--sm">← Zurück</a>
   </section>
 
-  {# ---- Nachrichtenverlauf ---- #}
+  {# ---- Verlauf: Nachrichten + Terminvorschläge, chronologisch ---- #}
   <section class="card chat-thread" id="chat-thread">
-    {% for msg in conn.messages %}
-      {% set mine = msg.sender_id == current_user.id %}
-      {{ chat_bubble(
-           msg.text,
-           msg.sent_at.strftime("%d.%m. %H:%M"),
-           mine=mine,
-           status=("Gelesen" if msg.read_at else "Gesendet")
-      ) }}
+    {% for item in timeline %}
+      {% if item.kind == "message" %}
+        {% set msg = item.obj %}
+        {{ chat_bubble(
+             msg.text,
+             msg.sent_at.strftime("%d.%m. %H:%M"),
+             mine=(msg.sender_id == current_user.id),
+             status=("Gelesen" if msg.read_at else "Gesendet")
+        ) }}
+      {% else %}
+        {{ appointment_entry(item.obj, next_url=url_for('main.chat', conn_id=conn.id)) }}
+      {% endif %}
     {% else %}
       <p class="muted">Noch keine Nachrichten. Schreib die erste!</p>
     {% endfor %}
@@ -40,6 +44,18 @@
     <textarea name="text" class="input" rows="2" maxlength="2000"
               placeholder="Nachricht an {{ partner.name }} …" required></textarea>
     <button type="submit" class="btn btn--primary">Senden</button>
+  </form>
+
+  {# ---- Terminvorschlag (dezent, unter dem Nachrichtenfeld) ---- #}
+  <form method="post" action="{{ url_for('main.appointment_propose') }}" class="card appt-propose">
+    {{ csrf() }}
+    <input type="hidden" name="conn_id" value="{{ conn.id }}">
+    <span class="appt-propose__label eyebrow">Termin vorschlagen</span>
+    <input type="date" name="date" class="input appt-propose__field" required
+           aria-label="Datum des Terminvorschlags">
+    <input type="time" name="time" class="input appt-propose__field" required
+           aria-label="Uhrzeit des Terminvorschlags">
+    <button type="submit" class="btn btn--secondary btn--sm">Vorschlagen</button>
   </form>
 
 </div>

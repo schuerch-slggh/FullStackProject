@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_components.html" import pill, streak_tile, checkin_grid, feed_item, csrf %}
+{% from "partials/_components.html" import pill, streak_tile, checkin_grid, feed_item, appt_actions, csrf with context %}
 {% block title %}Grindprogress · GrindMate{% endblock %}
 
 {% block content %}
@@ -45,6 +45,53 @@
       {{ checkin_form.note(class="input", placeholder="Notiz (optional)") }}
       <button type="submit" class="btn btn--primary">Heute einchecken</button>
     </form>
+  </section>
+
+  {# ---- Offene Termine (direkt unter Check-in) ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Offene Termine</p>
+    {% if appt_proposals or appt_confirmed %}
+
+      {% if appt_proposals %}
+      <p class="appt-group-label">Offene Vorschläge</p>
+      <div class="stack" style="margin-bottom:var(--space-5)">
+        {% for it in appt_proposals %}
+        <div class="appt-row">
+          <div class="appt-row__info">
+            <span class="appt-row__when">{{ it.appt.scheduled_at.strftime('%d.%m.%Y · %H:%M') }} Uhr</span>
+            <span class="muted">mit {{ it.partner.name }}</span>
+          </div>
+          {% if it.is_recipient %}
+            {{ appt_actions(it.appt, url_for('main.grindprogress')) }}
+          {% else %}
+            <span class="appt-row__hint">wartet auf Antwort …</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if appt_confirmed %}
+      <p class="appt-group-label">Bestätigt</p>
+      <div class="stack">
+        {% for it in appt_confirmed %}
+        <div class="appt-row">
+          <div class="appt-row__info">
+            <span class="appt-row__when">{{ it.appt.scheduled_at.strftime('%d.%m.%Y · %H:%M') }} Uhr</span>
+            <span class="muted">mit {{ it.partner.name }}</span>
+          </div>
+          {{ pill("bestätigt ✓", variant="success") }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    {% else %}
+      <div class="empty">
+        <p class="empty__title">Keine offenen Termine</p>
+        <p class="muted">Schlage im Chat mit einem Partner einen Termin vor.</p>
+      </div>
+    {% endif %}
   </section>
 
   {# ---- b) Eigener Fortschritt (FA-12 AK2) ---- #}

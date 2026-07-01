@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 
 from . import db
 from .models import (
-    User, Goal, Photo, Connection, Message, Checkin, Rating,
+    User, Goal, Photo, Connection, Message, Checkin, Rating, Appointment,
     match_score, match_breakdown, match_breakdown_for_goal, top_matches_for_goal,
     due_reminders, checkin_history,
 )
@@ -162,11 +162,44 @@ def index():
     return render_template("landing.html")
 
 
+def _upcoming_appointments(user):
+    """Anstehende Termine aller eigenen Partnerschaften, für "Offene Termine".
+
+    Liefert zwei chronologisch (nächster zuerst) sortierte Listen: offene
+    Vorschläge und bestätigte künftige Termine. Vergangene und abgelehnte
+    Termine werden ausgeblendet; Zugriffsschutz über die eigenen Connections.
+    """
+    by_id = {c.id: c for c in Connection.active_for(user.id)}
+    if not by_id:
+        return [], []
+    now = datetime.now()
+    appts = (
+        Appointment.query
+        .filter(Appointment.match_id.in_(list(by_id)))
+        .order_by(Appointment.scheduled_at.asc())
+        .all()
+    )
+    proposals, confirmed = [], []
+    for a in appts:
+        if a.status == "abgelehnt" or a.scheduled_at <= now:
+            continue
+        conn = by_id[a.match_id]
+        item = {
+            "appt": a,
+            "conn": conn,
+            "partner": conn.partner_of(user),
+            "is_recipient": a.recipient_id == user.id,
+        }
+        (proposals if a.status == "vorgeschlagen" else confirmed).append(item)
+    return proposals, confirmed
+
+
 @main_bp.route("/grindprogress")
 @login_required
 def grindprogress():
     """Startseite: eigenes Check-in/Fortschritts-Dashboard + Partner & Feed."""
     partners = Connection.active_for(current_user.id)
+    appt_proposals, appt_confirmed = _upcoming_appointments(current_user)
     checkin_form = CheckinForm()
     checkin_form.goal.choices = _goal_choices(current_user)
     # Kompakte Partner-Fortschritte (7-Tage-Mini-Gitter) + Zustände für die
@@ -193,6 +226,8 @@ def grindprogress():
         history=checkin_history(current_user),
         partner_progress=partner_progress,
         feed=_partner_activity(partners),
+        appt_proposals=appt_proposals,
+        appt_confirmed=appt_confirmed,
     )
 
 
@@ -521,9 +556,84 @@ def chat(conn_id):
             m.read_at = now
         db.session.commit()
 
+    # Chronologische Timeline aus Nachrichten UND Terminvorschlägen — beide
+    # erscheinen an ihrer zeitlich richtigen Stelle im Verlauf.
+    timeline = [{"kind": "message", "obj": m, "sort": m.sent_at} for m in conn.messages]
+    timeline += [{"kind": "appointment", "obj": a, "sort": a.created_at} for a in conn.appointments]
+    timeline.sort(key=lambda item: item["sort"] or datetime.min)
+
     return render_template(
         "chat.html", conn=conn, partner=conn.partner_of(current_user), form=form,
+        timeline=timeline,
     )
+
+
+def _safe_next(default: str) -> str:
+    """Lokales Redirect-Ziel aus dem Formular (verhindert Open-Redirects)."""
+    nxt = request.form.get("next", "")
+    return nxt if nxt.startswith("/") else default
+
+
+@main_bp.route("/appointment/propose", methods=["POST"])
+@login_required
+def appointment_propose():
+    """Schlägt einen Termin in einer Partnerschaft vor (FA – Terminvereinbarung)."""
+    conn = db.get_or_404(Connection, request.form.get("conn_id", type=int))
+    if not conn.involves(current_user.id) or conn.status != "active":
+        abort(403)
+
+    raw = f"{request.form.get('date', '')} {request.form.get('time', '')}".strip()
+    try:
+        scheduled_at = datetime.strptime(raw, "%Y-%m-%d %H:%M")
+    except ValueError:
+        flash("Bitte gib ein gültiges Datum und eine Uhrzeit an.", "danger")
+        return redirect(url_for("main.chat", conn_id=conn.id))
+
+    if scheduled_at <= datetime.now():
+        flash("Der Termin liegt in der Vergangenheit – wähle einen späteren Zeitpunkt.", "danger")
+        return redirect(url_for("main.chat", conn_id=conn.id))
+
+    db.session.add(Appointment(
+        match_id=conn.id, proposed_by=current_user.id, scheduled_at=scheduled_at,
+    ))
+    db.session.commit()
+    partner = conn.partner_of(current_user)
+    # FA-10: Partner über den Vorschlag informieren (ohne sensible Inhalte).
+    notify(
+        partner,
+        f"{current_user.name} schlägt einen Termin vor",
+        f"Hi {partner.name}, {current_user.name} hat dir auf GrindMate einen "
+        f"Termin für {scheduled_at.strftime('%d.%m.%Y um %H:%M')} vorgeschlagen.",
+    )
+    flash("Terminvorschlag gesendet.", "success")
+    return redirect(url_for("main.chat", conn_id=conn.id))
+
+
+def _respond_to_appointment(appointment_id: int, new_status: str, flash_msg: str):
+    """Gemeinsame Logik für Zu-/Absage: nur der Empfänger eines offenen
+    Vorschlags darf reagieren (Zugriffsschutz)."""
+    appt = db.get_or_404(Appointment, appointment_id)
+    conn = appt.connection
+    if not conn.involves(current_user.id):
+        abort(403)
+    if appt.recipient_id != current_user.id or appt.status != "vorgeschlagen":
+        abort(403)
+    appt.status = new_status
+    db.session.commit()
+    flash(flash_msg, "success")
+    return redirect(_safe_next(url_for("main.chat", conn_id=conn.id)))
+
+
+@main_bp.route("/appointment/<int:appointment_id>/confirm", methods=["POST"])
+@login_required
+def appointment_confirm(appointment_id):
+    return _respond_to_appointment(appointment_id, "bestätigt", "Termin zugesagt.")
+
+
+@main_bp.route("/appointment/<int:appointment_id>/decline", methods=["POST"])
+@login_required
+def appointment_decline(appointment_id):
+    return _respond_to_appointment(appointment_id, "abgelehnt", "Termin abgelehnt.")
 
 
 @main_bp.route("/settings", methods=["GET", "POST"])

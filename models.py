@@ -220,6 +220,11 @@ class Connection(db.Model):
         order_by="Message.sent_at",
         cascade="all, delete-orphan",
     )
+    appointments = db.relationship(
+        "Appointment", back_populates="connection",
+        order_by="Appointment.scheduled_at",
+        cascade="all, delete-orphan",
+    )
 
     @classmethod
     def between(cls, user_a_id: int, user_b_id: int) -> "Connection | None":
@@ -318,6 +323,41 @@ class Rating(db.Model):
 
     def __repr__(self):
         return f"<Rating {self.id} {self.rater_id}→{self.ratee_id} {self.stars}★>"
+
+
+# Termin-Status: ein Vorschlag ist offen, bis der Empfänger zu- oder absagt.
+APPOINTMENT_STATUSES = ("vorgeschlagen", "bestätigt", "abgelehnt")
+
+
+class Appointment(db.Model):
+    """Ein Terminvorschlag innerhalb einer Partnerschaft (an den Chat gebunden).
+
+    Ein Termin gehört immer zu genau einer `Connection` — daraus ergibt sich der
+    Zugriffsschutz. Vorgeschlagen wird von `proposed_by`; zu-/absagen darf nur
+    der jeweils andere Partner (der Empfänger).
+    """
+
+    __tablename__ = "appointment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.Integer, db.ForeignKey("connection.id"), nullable=False, index=True)
+    proposed_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    # Das vorgeschlagene Datum + Uhrzeit (das "datetime"-Feld des Termins).
+    scheduled_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="vorgeschlagen")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    connection = db.relationship("Connection", back_populates="appointments")
+    proposer = db.relationship("User", foreign_keys=[proposed_by])
+
+    @property
+    def recipient_id(self) -> int:
+        """Der Empfänger des Vorschlags — der Partner, der NICHT vorgeschlagen hat."""
+        c = self.connection
+        return c.user2_id if c.user1_id == self.proposed_by else c.user1_id
+
+    def __repr__(self):
+        return f"<Appointment {self.id} conn={self.match_id} {self.status} @ {self.scheduled_at}>"
 
 
 # Named so the UI can show *why* two users matched, not just the percentage.
