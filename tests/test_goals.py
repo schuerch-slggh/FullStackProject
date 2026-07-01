@@ -13,13 +13,16 @@ def test_add_goal_saves_new_goal(app, logged_in_client, test_user):
     resp = logged_in_client.post("/goals/new", data={
         "goal_category": "Lernen",
         "goal_text": "Python meistern",
-        "frequency": "täglich",
+        "frequency_count": "1",
+        "frequency_unit": "täglich",
         "preferred_checkin_time": "20:00",
     }, follow_redirects=True)
     assert resp.status_code == 200
     with app.app_context():
         goals = Goal.query.filter_by(user_id=test_user).all()
-        assert any(g.goal_text == "Python meistern" for g in goals)
+        goal = next(g for g in goals if g.goal_text == "Python meistern")
+        assert goal.frequency == "täglich"
+        assert goal.preferred_checkin_time == "20:00"
 
 
 def test_delete_own_goal(app, logged_in_client, test_user):

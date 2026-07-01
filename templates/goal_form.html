@@ -16,8 +16,9 @@
       {{ field(form.goal_category) }}
       {{ field(form.goal_text, "z. B. Bachelorarbeit fertig schreiben") }}
       <div class="field-row">
-        {{ field(form.frequency, "z. B. 3x pro Woche") }}
-        {{ field(form.preferred_checkin_time, "z. B. 20:00") }}
+        {{ field(form.frequency_count) }}
+        {{ field(form.frequency_unit) }}
+        {{ field(form.preferred_checkin_time) }}
       </div>
 
       <div class="cluster cluster--tight">

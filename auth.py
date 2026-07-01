@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from . import db
 from .models import User, Goal, Photo
-from .forms import LoginForm, RegistrationForm
+from .forms import LoginForm, RegistrationForm, compose_frequency
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -45,8 +45,11 @@ def register():
         user.goals.append(Goal(
             goal_category=form.goal_category.data,
             goal_text=form.goal_text.data,
-            frequency=form.frequency.data,
-            preferred_checkin_time=form.preferred_checkin_time.data,
+            frequency=compose_frequency(form.frequency_count.data, form.frequency_unit.data),
+            preferred_checkin_time=(
+                form.preferred_checkin_time.data.strftime("%H:%M")
+                if form.preferred_checkin_time.data else None
+            ),
         ))
         db.session.add(user)
         db.session.commit()

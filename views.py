@@ -19,7 +19,7 @@ from .models import (
 )
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
-    SettingsForm, RatingForm,
+    SettingsForm, RatingForm, compose_frequency,
 )
 from .mailer import notify
 from .coach import chat_reply, coach_headline
@@ -283,8 +283,11 @@ def add_goal():
             user_id=current_user.id,
             goal_category=form.goal_category.data,
             goal_text=form.goal_text.data,
-            frequency=form.frequency.data,
-            preferred_checkin_time=form.preferred_checkin_time.data,
+            frequency=compose_frequency(form.frequency_count.data, form.frequency_unit.data),
+            preferred_checkin_time=(
+                form.preferred_checkin_time.data.strftime("%H:%M")
+                if form.preferred_checkin_time.data else None
+            ),
         )
         db.session.add(goal)
         db.session.commit()

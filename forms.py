@@ -4,6 +4,7 @@ from wtforms import (
     StringField, PasswordField, SubmitField,
     SelectField, IntegerField, TextAreaField, BooleanField,
 )
+from wtforms.fields import TimeField
 from wtforms.validators import (
     DataRequired, Email, Length, EqualTo, Optional, NumberRange, ValidationError,
 )
@@ -15,6 +16,10 @@ GOAL_CATEGORIES = [
     ("Projekt", "Projekt"),
     ("Sport", "Sport"),
     ("Gewohnheit", "Gewohnheit"),
+    ("Kreativität", "Kreativität"),
+    ("Finanzen", "Finanzen"),
+    ("Karriere", "Karriere"),
+    ("Achtsamkeit", "Achtsamkeit"),
 ]
 
 FREQUENCY_CHOICES = [
@@ -25,6 +30,27 @@ FREQUENCY_CHOICES = [
     ("4x pro Woche", "4x pro Woche"),
     ("5x pro Woche", "5x pro Woche"),
 ]
+
+# Für die zwei Dropdowns beim Anlegen eines Commitments (statt Freitext).
+FREQUENCY_COUNT_CHOICES = [(str(i), str(i)) for i in range(1, 11)]
+FREQUENCY_UNIT_CHOICES = [
+    ("täglich", "täglich"),
+    ("wöchentlich", "wöchentlich"),
+    ("monatlich", "monatlich"),
+]
+
+
+def compose_frequency(count: str, unit: str) -> str:
+    """Turn the two frequency dropdowns into the stored string.
+
+    Kept compatible with the existing "täglich" / "Nx pro Woche" convention
+    (used by seed data and the search filter) so matching keeps working;
+    "monatlich" extends it with "Nx pro Monat".
+    """
+    if unit == "täglich":
+        return "täglich"
+    period = "Woche" if unit == "wöchentlich" else "Monat"
+    return f"{count}x pro {period}"
 
 
 class LoginForm(FlaskForm):
@@ -50,8 +76,11 @@ class RegistrationForm(FlaskForm):
     # --- Erstes Commitment ---
     goal_category = SelectField("Zielkategorie", choices=GOAL_CATEGORIES, validators=[DataRequired()])
     goal_text = StringField("Dein konkretes Ziel", validators=[DataRequired(), Length(max=280)])
-    frequency = StringField("Frequenz", validators=[Optional(), Length(max=40)])
-    preferred_checkin_time = StringField("Bevorzugte Check-in-Zeit", validators=[Optional(), Length(max=20)])
+    frequency_count = SelectField("Anzahl", choices=FREQUENCY_COUNT_CHOICES, default="3")
+    frequency_unit = SelectField("Rhythmus", choices=FREQUENCY_UNIT_CHOICES, default="wöchentlich")
+    preferred_checkin_time = TimeField(
+        "Bevorzugte Check-in-Zeit", validators=[Optional()], format="%H:%M",
+    )
 
     bio = TextAreaField("Über mich", validators=[Optional(), Length(max=500)])
 
@@ -77,8 +106,11 @@ class EditProfileForm(FlaskForm):
 class GoalForm(FlaskForm):
     goal_category = SelectField("Zielkategorie", choices=GOAL_CATEGORIES, validators=[DataRequired()])
     goal_text = StringField("Dein Ziel", validators=[DataRequired(), Length(max=280)])
-    frequency = StringField("Frequenz", validators=[Optional(), Length(max=40)])
-    preferred_checkin_time = StringField("Bevorzugte Check-in-Zeit", validators=[Optional(), Length(max=20)])
+    frequency_count = SelectField("Anzahl", choices=FREQUENCY_COUNT_CHOICES, default="3")
+    frequency_unit = SelectField("Rhythmus", choices=FREQUENCY_UNIT_CHOICES, default="wöchentlich")
+    preferred_checkin_time = TimeField(
+        "Bevorzugte Check-in-Zeit", validators=[Optional()], format="%H:%M",
+    )
     submit = SubmitField("Commitment speichern")
 
 
