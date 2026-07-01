@@ -1,10 +1,15 @@
-- design 
+Silvan:
 - matching anpassen (Text-Vergleich mit KI)
 - Distanz von Location ausrechnen
-- Terminvereinbarung bei Partner
-- Erinnern-Button testen
-- Erklärungen, wie Match-Prozent zustande gekommen ist
-- Frequenz und Zeit Angabe soll nicht Freitext sein
 - Testfrequenzen
-- deployen
 - Changelog
+
+Gian:
+- Fehler bei Einstellungen beheben
+- Onboarding (optional - Erklärungen, wie Match-Prozent zustande gekommen ist)
+- UX überarbeiten
+- Erinnern-Button testen
+- aktivität Partner - Paging von 10 Einträgen
+
+
+
