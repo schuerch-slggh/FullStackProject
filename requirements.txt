@@ -9,6 +9,7 @@ itsdangerous
 Jinja2
 MarkupSafe
 SQLAlchemy
+PyMySQL
 typing_extensions
 Werkzeug
 WTForms

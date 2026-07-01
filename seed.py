@@ -4,6 +4,7 @@ Run with:  flask --app main seed
 All demo accounts share the password:  accountability
 """
 import click
+import random
 from datetime import timedelta, date as _date, datetime
 
 from . import db
@@ -225,6 +226,109 @@ def seed_db():
     return len(DUMMIES)
 
 
+_FIRST_NAMES = [
+    "Mia", "Noah", "Emma", "Liam", "Sophie", "Elias", "Lea", "Luca", "Laura", "Jan",
+    "Nina", "Fabian", "Julia", "Simon", "Anja", "Marco", "Sina", "Reto", "Céline", "Kevin",
+    "Chiara", "Dominik", "Aline", "Timo", "Vanessa", "Yannick", "Melanie", "Pascal", "Selina", "Adrian",
+    "Michelle", "Raphael", "Jasmin", "Roman", "Carla", "Stefan", "Nadine", "Florian", "Tanja", "Patrick",
+    "Larissa", "Dario", "Fiona", "Silvan", "Andrea", "Manuel", "Corinne", "Livio", "Deborah", "Joel",
+]
+
+_LAST_NAMES = [
+    "Meier", "Müller", "Schmid", "Keller", "Weber", "Huber", "Steiner", "Fischer", "Gerber", "Baumann",
+    "Frei", "Brunner", "Moser", "Widmer", "Graf", "Roth", "Zimmermann", "Kunz", "Marti", "Berger",
+    "Sutter", "Hofmann", "Schneider", "Wyss", "Lehmann", "Bühler", "Egli", "Meyer", "Stalder", "Blum",
+    "Vogel", "Suter", "Furrer", "Ammann", "Kaufmann", "Rey", "Bär", "Peter", "Hess", "Bachmann",
+]
+
+_CITIES = [
+    "Zürich", "Bern", "Basel", "Genf", "Lausanne", "Luzern", "St. Gallen", "Winterthur",
+    "Zug", "Thun", "Chur", "Fribourg", "Aarau", "Solothurn", "Baden", "Uster",
+    "Schaffhausen", "Frauenfeld", "Rapperswil", "Wil", "Biel", "Neuenburg", "Sion", "Locarno",
+]
+
+_FREQUENCIES = ["täglich", "2x pro Woche", "3x pro Woche", "4x pro Woche", "5x pro Woche"]
+
+_GOAL_TEMPLATES = {
+    "Lernen": [
+        "Für die Prüfung im Sommer lernen", "Jeden Tag eine Stunde Französisch üben",
+        "Online-Kurs in Data Science abschliessen", "Bachelorarbeit fertig schreiben",
+        "Englisch auf C1 bringen", "Für die Zwischenprüfung lernen",
+    ],
+    "Projekt": [
+        "Eigene Website launchen", "Nebenbei an einer App bauen", "Portfolio fertigstellen",
+        "Business-Plan für Side-Hustle schreiben", "Podcast-Projekt starten",
+    ],
+    "Sport": [
+        "3x pro Woche laufen gehen", "Ins Fitnessstudio gehen", "Für den ersten Halbmarathon trainieren",
+        "Wieder regelmässig Yoga machen", "Bouldern 2x pro Woche", "Schwimmtraining aufbauen",
+    ],
+    "Gewohnheit": [
+        "Jeden Abend 20 Minuten lesen", "Früher aufstehen", "Weniger Handyzeit, mehr Fokus",
+        "Täglich meditieren", "Feste Schlafenszeit einhalten",
+    ],
+}
+
+_BIO_TEMPLATES = {
+    "Lernen": [
+        "Wohne in {city} und will endlich dranbleiben beim Lernen. Suche jemanden, der nachfragt.",
+        "Student:in in {city}, brauche einen festen Rhythmus zum Lernen.",
+    ],
+    "Projekt": [
+        "Baue neben dem Studium in {city} an einem eigenen Projekt. Motivation hält besser zu zweit.",
+        "Aus {city}. Habe ein Side-Project, das seit Monaten liegen bleibt — jetzt ernsthaft.",
+    ],
+    "Sport": [
+        "Aus {city}, will endlich regelmässig Sport machen. Suche Trainingspartner:in.",
+        "Wohne in {city} und brauche jemanden, der mich zum Training mitzieht.",
+    ],
+    "Gewohnheit": [
+        "Aus {city}, will eine neue Gewohnheit durchziehen. Ein Check-in-Partner würde mir enorm helfen.",
+        "Lebe in {city} und will alte Muster ändern. Gegenseitige Check-ins helfen mir am meisten.",
+    ],
+}
+
+
+def seed_bulk(count: int = 100, rng_seed: int = 42):
+    """Insert `count` randomized example users (email user001@example.com ...).
+
+    Idempotent per index: re-running only fills in missing users, matching
+    existing profiles are left untouched.
+    """
+    db.create_all()
+    rng = random.Random(rng_seed)
+    existing = {u.email for u in User.query.all()}
+    created = 0
+    for i in range(1, count + 1):
+        email = f"user{i:03d}@example.com"
+        if email in existing:
+            continue
+        category = rng.choice(list(_GOAL_TEMPLATES.keys()))
+        city = rng.choice(_CITIES)
+        user = User(
+            email=email,
+            name=f"{rng.choice(_FIRST_NAMES)} {rng.choice(_LAST_NAMES)}",
+            age=rng.randint(18, 45),
+            city=city,
+            bio=rng.choice(_BIO_TEMPLATES[category]).format(city=city),
+        )
+        user.set_password(DEMO_PASSWORD)
+        user.photos.append(Photo(url=f"https://i.pravatar.cc/300?img={rng.randint(1, 70)}", is_primary=True))
+        user.goals.append(Goal(
+            goal_category=category,
+            goal_text=rng.choice(_GOAL_TEMPLATES[category]),
+            frequency=rng.choice(_FREQUENCIES),
+            preferred_checkin_time=f"{rng.randint(6, 22):02d}:{rng.choice(['00', '15', '30', '45'])}",
+        ))
+        streak = rng.choice([0, 0, 0, 3, 5, 7, 10, 14, 20])
+        for d in range(streak):
+            user.checkins.append(Checkin(checkin_date=_date.today() - timedelta(days=d)))
+        db.session.add(user)
+        created += 1
+    db.session.commit()
+    return created
+
+
 def register_cli(app):
     @app.cli.command("seed")
     def seed_command():
@@ -234,3 +338,13 @@ def register_cli(app):
             click.echo(f"{count} Profile angelegt. Login z.B.: anna.keller@example.com / {DEMO_PASSWORD}")
         else:
             click.echo("DB enthält bereits Profile - übersprungen.")
+
+    @app.cli.command("seed-bulk")
+    @click.option("--count", default=100, help="Anzahl zusätzlicher Beispiel-User")
+    def seed_bulk_command(count):
+        """Insert additional randomized example users (user001@example.com ...)."""
+        created = seed_bulk(count)
+        if created:
+            click.echo(f"{created} zusätzliche Beispiel-User angelegt (Passwort: {DEMO_PASSWORD}).")
+        else:
+            click.echo("Alle Beispiel-User existieren bereits - übersprungen.")
