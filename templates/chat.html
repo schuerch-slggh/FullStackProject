@@ -1,47 +1,56 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import chat_bubble %}
 {% block title %}Chat mit {{ partner.name }} · GrindMate{% endblock %}
 
 {% block content %}
-<div class="chat-wrap">
+<div class="narrow chat">
 
-  <section class="card-soft chat-head">
+  {# ---- Kopf: Partner + Präsenz ---- #}
+  <section class="card chat-head">
     <a href="{{ url_for('main.user_profile', user_id=partner.id) }}" class="chat-partner">
-      <img class="avatar-sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
-      <span class="chat-partner-id">
-        <span class="chat-partner-name">{{ partner.name }}</span>
-        <span class="presence {{ 'online' if partner.is_online else 'offline' }}">
-          <span class="presence-dot"></span>{{ "online" if partner.is_online else "offline" }}
+      <img class="avatar avatar--sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
+      <span class="chat-partner__id">
+        <span class="chat-partner__name">{{ partner.name }}</span>
+        <span class="presence {{ 'presence--online' if partner.is_online else 'presence--offline' }}">
+          <span class="presence__dot"></span>{{ "online" if partner.is_online else "offline" }}
         </span>
       </span>
     </a>
-    <a href="{{ url_for('main.profile') }}" class="btn btn-ghost btn-sm">← Zurück</a>
+    <a href="{{ url_for('main.profile') }}" class="btn btn--secondary btn--sm">← Zurück</a>
   </section>
 
-  <section class="card-soft chat-thread">
+  {# ---- Nachrichtenverlauf ---- #}
+  <section class="card chat-thread" id="chat-thread">
     {% for msg in conn.messages %}
       {% set mine = msg.sender_id == current_user.id %}
-      <div class="chat-row {{ 'mine' if mine else 'theirs' }}">
-        <div class="chat-bubble">
-          <p class="chat-text">{{ msg.text }}</p>
-          <span class="chat-time">
-            {{ msg.sent_at.strftime("%d.%m. %H:%M") }}
-            {% if mine %}
-              <span class="chat-status">· {{ "Gelesen" if msg.read_at else "Gesendet" }}</span>
-            {% endif %}
-          </span>
-        </div>
-      </div>
+      {{ chat_bubble(
+           msg.text,
+           msg.sent_at.strftime("%d.%m. %H:%M"),
+           mine=mine,
+           status=("Gelesen" if msg.read_at else "Gesendet")
+      ) }}
     {% else %}
-      <p class="text-muted-custom">Noch keine Nachrichten. Schreib die erste!</p>
+      <p class="muted">Noch keine Nachrichten. Schreib die erste!</p>
     {% endfor %}
   </section>
 
-  <form method="post" action="{{ url_for('main.chat', conn_id=conn.id) }}" class="card-soft chat-compose">
+  {# ---- Eingabezeile ---- #}
+  <form method="post" action="{{ url_for('main.chat', conn_id=conn.id) }}" class="card chat-compose">
     {{ form.hidden_tag() }}
-    <textarea name="text" class="form-control" rows="2" maxlength="2000"
+    <textarea name="text" class="input" rows="2" maxlength="2000"
               placeholder="Nachricht an {{ partner.name }} …" required></textarea>
-    <button type="submit" class="btn btn-ember">Senden</button>
+    <button type="submit" class="btn btn--primary">Senden</button>
   </form>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Chat beim Öffnen ans Ende scrollen (nur nötiges Vanilla-JS).
+  (function () {
+    var thread = document.getElementById("chat-thread");
+    if (thread) { thread.scrollTop = thread.scrollHeight; }
+  })();
+</script>
 {% endblock %}

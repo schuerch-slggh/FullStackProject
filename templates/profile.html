@@ -1,155 +1,160 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import pill, streak_tile, checkin_grid, csrf %}
 {% block title %}{{ user.name }} · GrindMate{% endblock %}
 
 {% block content %}
-<div class="profile-grid">
+<div class="narrow stack">
 
-  <section class="card-soft profile-head">
-    <img class="avatar" src="{{ user.photo_url }}" alt="Profilfoto von {{ user.name }}">
-    <div class="profile-id">
-      <h1 class="profile-name">{{ user.name }}</h1>
-      <p class="profile-meta">
+  {# ---- Kopf: Foto, Identität, Reputation, Streak-Stat ---- #}
+  <section class="card profile-head">
+    <img class="avatar avatar--lg" src="{{ user.photo_url }}" alt="Profilfoto von {{ user.name }}">
+    <div>
+      <h1 class="profile-head__name">{{ user.name }}</h1>
+      <p class="muted">
         {% if user.age %}{{ user.age }} Jahre{% endif %}
         {% if user.age and user.city %} · {% endif %}
         {% if user.city %}{{ user.city }}{% endif %}
       </p>
       <p class="reputation" title="Verlässlichkeit aus Aktivität und Partner-Bewertungen">
-        <span class="rep-star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="rep-max">/5</span>
+        <span class="reputation__star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="reputation__max">/5</span>
         {% if user.avg_rating is not none %}
-          <span class="rep-note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
+          <span class="reputation__note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
         {% endif %}
       </p>
-      <a href="{{ url_for('main.edit_profile') }}" class="btn btn-ghost btn-sm mt-2">Profil bearbeiten</a>
+      <a href="{{ url_for('main.edit_profile') }}" class="btn btn--secondary btn--sm" style="margin-top:.6rem">Profil bearbeiten</a>
     </div>
-    <div class="streak" title="Aktueller Streak">
-      <span class="streak-flame">▲</span>
-      <span class="streak-num">{{ user.streak }}</span>
-      <span class="streak-label">Tage<br>Streak</span>
-    </div>
+    {{ streak_tile(user.streak) }}
   </section>
 
+  {# ---- Verbindungsanfragen ---- #}
   {% if pending_requests %}
-  <section class="card-soft" style="border-left:3px solid var(--ember)">
-    <p class="section-eyebrow">Verbindungsanfragen ({{ pending_requests|length }})</p>
-    {% for conn in pending_requests %}
-    <div class="d-flex justify-content-between align-items-center{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
-      <a href="{{ url_for('main.user_profile', user_id=conn.user1_id) }}"
-         class="fw-semibold text-decoration-none" style="color:var(--ink)">{{ conn.user1.name }}</a>
-      <div class="d-flex gap-2">
-        <form method="post" action="{{ url_for('main.accept_connection', conn_id=conn.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-success btn-sm">Annehmen</button>
-        </form>
-        <form method="post" action="{{ url_for('main.decline_connection', conn_id=conn.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-ghost btn-sm">Ablehnen</button>
-        </form>
-      </div>
-    </div>
-    {% endfor %}
-  </section>
-  {% endif %}
-
-  {% if reminders %}
-  <section class="card-soft" style="border-left:3px solid var(--ember)">
-    <p class="section-eyebrow">Fällige Erinnerungen ({{ reminders|length }})</p>
-    {% for goal in reminders %}
-    <div class="goal-item{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
-      <span class="pill">{{ goal.goal_category }}</span>
-      <p class="goal-text">{{ goal.goal_text }}</p>
-      <span class="fact-value">Geplant um {{ goal.preferred_checkin_time }} – jetzt einchecken.</span>
-    </div>
-    {% endfor %}
-  </section>
-  {% endif %}
-
-  <section class="card-soft">
-    <p class="section-eyebrow">Check-in</p>
-    {% if checked_in_today %}
-      <p class="text-muted-custom mb-3">✓ Heute schon eingecheckt. Streak: {{ user.streak }} Tage.</p>
-    {% else %}
-      <p class="text-muted-custom mb-3">Heute noch nicht eingecheckt – halte deinen Streak am Leben.</p>
-    {% endif %}
-    <form method="post" action="{{ url_for('main.checkin') }}" class="checkin-form">
-      {{ checkin_form.hidden_tag() }}
-      {{ checkin_form.goal(class="form-control") }}
-      {{ checkin_form.note(class="form-control", placeholder="Notiz (optional)") }}
-      <button type="submit" class="btn btn-ember">Heute einchecken</button>
-    </form>
-  </section>
-
-  {# FA-12 AK2: einfaches Diagramm der Check-in-Historie über die Zeit #}
-  <section class="card-soft">
-    <p class="section-eyebrow">Fortschritt · letzte 14 Tage</p>
-    {% set max_count = (history | map(attribute='count') | max) or 1 %}
-    <div class="history-chart" role="img"
-         aria-label="Check-ins der letzten 14 Tage">
-      {% for day in history %}
-      <div class="history-bar-wrap" title="{{ day.date.strftime('%d.%m.') }}: {{ day.count }} Check-in{{ '' if day.count == 1 else 's' }}">
-        <div class="history-bar{% if day.count %} filled{% endif %}"
-             style="height: {{ (12 + (day.count / max_count * 88)) if day.count else 6 }}%"></div>
+  <section class="card card--accent">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Verbindungsanfragen ({{ pending_requests|length }})</p>
+    <div class="stack--sm stack">
+      {% for conn in pending_requests %}
+      <div class="cluster cluster--between">
+        <a href="{{ url_for('main.user_profile', user_id=conn.user1_id) }}" class="result-card__name">{{ conn.user1.name }}</a>
+        <div class="cluster cluster--tight">
+          <form method="post" action="{{ url_for('main.accept_connection', conn_id=conn.id) }}">
+            {{ csrf() }}
+            <button class="btn btn--success btn--sm">Annehmen</button>
+          </form>
+          <form method="post" action="{{ url_for('main.decline_connection', conn_id=conn.id) }}">
+            {{ csrf() }}
+            <button class="btn btn--secondary btn--sm">Ablehnen</button>
+          </form>
+        </div>
       </div>
       {% endfor %}
     </div>
   </section>
+  {% endif %}
 
-  {% if partners %}
-  <section class="card-soft">
-    <p class="section-eyebrow">Meine Partner</p>
-    {% for conn in partners %}
-      {% set partner = conn.partner_of(current_user) %}
-      <a href="{{ url_for('main.chat', conn_id=conn.id) }}"
-         class="partner-row{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
-        <img class="avatar-sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
-        <span class="partner-name">{{ partner.name }}</span>
-        <span class="partner-chat">Chat →</span>
-      </a>
-    {% endfor %}
+  {# ---- Fällige Erinnerungen (FA-09) ---- #}
+  {% if reminders %}
+  <section class="card card--accent">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Fällige Erinnerungen ({{ reminders|length }})</p>
+    <div class="stack">
+      {% for goal in reminders %}
+      <div class="goal-item">
+        {{ pill(goal.goal_category) }}
+        <p class="goal-text">{{ goal.goal_text }}</p>
+        <p class="muted">Geplant um {{ goal.preferred_checkin_time }} – jetzt einchecken.</p>
+      </div>
+      {% endfor %}
+    </div>
   </section>
   {% endif %}
 
-  <section class="card-soft">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <p class="section-eyebrow mb-0">Meine Commitments</p>
-      <a href="{{ url_for('main.add_goal') }}" class="btn btn-ember btn-sm">+ Hinzufügen</a>
+  {# ---- Check-in ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-3)">Check-in</p>
+    {% if checked_in_today %}
+      <p class="muted" style="margin-bottom:var(--space-4)">✓ Heute schon eingecheckt. Streak: {{ user.streak }} Tage.</p>
+    {% else %}
+      <p class="muted" style="margin-bottom:var(--space-4)">Heute noch nicht eingecheckt – halte deinen Streak am Leben.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.checkin') }}" class="checkin-form">
+      {{ checkin_form.hidden_tag() }}
+      {{ checkin_form.goal(class="input") }}
+      {{ checkin_form.note(class="input", placeholder="Notiz (optional)") }}
+      <button type="submit" class="btn btn--primary">Heute einchecken</button>
+    </form>
+  </section>
+
+  {# ---- Fortschritt: Check-in-Historie als Zellen-Gitter (FA-12 AK2) ---- #}
+  <section class="card">
+    <div class="cluster cluster--between" style="margin-bottom:var(--space-4)">
+      <p class="eyebrow" style="margin:0">Fortschritt · letzte 14 Tage</p>
+      <div class="stat" style="align-items:flex-end">
+        <span class="stat__value" style="font-size:1.5rem">{{ (user.activity_level * 100)|round|int }}%</span>
+        <span class="stat__label">Check-in-Quote</span>
+      </div>
+    </div>
+    {{ checkin_grid(history) }}
+  </section>
+
+  {# ---- Partner ---- #}
+  {% if partners %}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Meine Partner</p>
+    <div>
+      {% for conn in partners %}
+        {% set partner = conn.partner_of(current_user) %}
+        <a href="{{ url_for('main.chat', conn_id=conn.id) }}" class="partner-row">
+          <img class="avatar avatar--sm" src="{{ partner.photo_url }}" alt="Profilfoto von {{ partner.name }}">
+          <span class="partner-name">{{ partner.name }}</span>
+          <span class="partner-chat">Chat →</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ---- Commitments ---- #}
+  <section class="card">
+    <div class="cluster cluster--between" style="margin-bottom:var(--space-4)">
+      <p class="eyebrow" style="margin:0">Meine Commitments</p>
+      <a href="{{ url_for('main.add_goal') }}" class="btn btn--primary btn--sm">+ Hinzufügen</a>
     </div>
 
     {% for goal in user.goals %}
-    <div class="goal-item{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
-      <div class="d-flex justify-content-between align-items-start gap-2">
-        <div class="flex-grow-1">
-          <span class="pill">{{ goal.goal_category }}</span>
+    <div class="goal-item">
+      <div class="cluster cluster--between" style="align-items:flex-start">
+        <div class="grow">
+          {{ pill(goal.goal_category) }}
           <p class="goal-text">{{ goal.goal_text }}</p>
           <div class="commit-facts">
-            <div>
-              <span class="fact-label">Frequenz</span>
-              <span class="fact-value">{{ goal.frequency or "—" }}</span>
+            <div class="stat">
+              <span class="stat__label">Frequenz</span>
+              <span style="font-weight:600">{{ goal.frequency or "—" }}</span>
             </div>
-            <div>
-              <span class="fact-label">Check-in</span>
-              <span class="fact-value">{{ goal.preferred_checkin_time or "—" }}</span>
+            <div class="stat">
+              <span class="stat__label">Check-in</span>
+              <span style="font-weight:600">{{ goal.preferred_checkin_time or "—" }}</span>
             </div>
           </div>
         </div>
-        <form method="post" action="{{ url_for('main.delete_goal', goal_id=goal.id) }}" style="flex-shrink:0">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-sm btn-ghost goal-delete"
+        <form method="post" action="{{ url_for('main.delete_goal', goal_id=goal.id) }}">
+          {{ csrf() }}
+          <button type="submit" class="btn btn--secondary btn--sm goal-delete"
                   title="Commitment löschen"
                   onclick="return confirm('Dieses Commitment wirklich löschen?')">✕</button>
         </form>
       </div>
     </div>
     {% else %}
-    <p class="text-muted-custom">Noch kein Commitment.
+    <p class="muted">Noch kein Commitment.
       <a href="{{ url_for('main.add_goal') }}">Jetzt hinzufügen.</a>
     </p>
     {% endfor %}
   </section>
 
+  {# ---- Über mich ---- #}
   {% if user.bio %}
-  <section class="card-soft">
-    <p class="section-eyebrow">Über mich</p>
-    <p class="bio">{{ user.bio }}</p>
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-3)">Über mich</p>
+    <p>{{ user.bio }}</p>
   </section>
   {% endif %}
 

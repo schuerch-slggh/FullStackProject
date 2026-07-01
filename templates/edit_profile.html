@@ -1,65 +1,45 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import field %}
 {% block title %}Profil bearbeiten · GrindMate{% endblock %}
 
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card auth-card-wide">
-    <p class="auth-eyebrow">Dein Profil</p>
-    <h1 class="auth-title">Profil bearbeiten</h1>
+<div class="auth auth--wide">
+  <div class="card">
+    <div class="auth__head">
+      <p class="eyebrow eyebrow--accent">Dein Profil</p>
+      <h1 class="auth__title">Profil bearbeiten</h1>
+    </div>
 
     <form method="post" enctype="multipart/form-data" novalidate>
       {{ form.hidden_tag() }}
 
       <p class="form-section">Identität</p>
-
-      <div class="mb-3">
-        {{ form.name.label(class="form-label") }}
-        {{ form.name(class="form-control") }}
-        {% for e in form.name.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-
-      <div class="row">
-        <div class="col mb-3">
-          {{ form.age.label(class="form-label") }}
-          {{ form.age(class="form-control") }}
-          {% for e in form.age.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-        </div>
-        <div class="col mb-3">
-          {{ form.city.label(class="form-label") }}
-          {{ form.city(class="form-control") }}
-          {% for e in form.city.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-        </div>
+      {{ field(form.name) }}
+      <div class="field-row">
+        {{ field(form.age) }}
+        {{ field(form.city) }}
       </div>
 
       <p class="form-section">Profilfoto</p>
-
-      <div class="mb-3 d-flex align-items-center gap-3">
-        <img src="{{ current_user.photo_url }}" alt="Aktuelles Foto"
-             style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">
-        <div>
-          {{ form.photo.label(class="form-label mb-1") }}
-          {{ form.photo(class="form-control form-control-sm") }}
-          {% for e in form.photo.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+      <div class="cluster" style="margin-bottom:var(--space-4)">
+        <img class="avatar avatar--md" src="{{ current_user.photo_url }}" alt="Aktuelles Foto">
+        <div class="grow">
+          {{ field(form.photo) }}
         </div>
       </div>
 
       <p class="form-section">Über mich</p>
+      {{ field(form.bio) }}
 
-      <div class="mb-4">
-        {{ form.bio.label(class="form-label") }}
-        {{ form.bio(class="form-control") }}
-        {% for e in form.bio.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-
-      <div class="d-flex gap-2">
-        {{ form.submit(class="btn btn-ember") }}
-        <a href="{{ url_for('main.profile') }}" class="btn btn-ghost">Abbrechen</a>
+      <div class="cluster cluster--tight">
+        {{ form.submit(class="btn btn--primary") }}
+        <a href="{{ url_for('main.profile') }}" class="btn btn--secondary">Abbrechen</a>
       </div>
     </form>
 
-    <div class="mt-4 pt-3" style="border-top:1px solid var(--border)">
-      <p class="section-eyebrow mb-2">Commitments</p>
-      <p style="font-size:.9rem;color:var(--slate)">
+    <div style="margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--border)">
+      <p class="eyebrow" style="margin-bottom:var(--space-2)">Commitments</p>
+      <p class="muted" style="font-size:.9rem">
         Commitments kannst du direkt auf deinem
         <a href="{{ url_for('main.profile') }}">Profil</a> hinzufügen oder entfernen.
       </p>

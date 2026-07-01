@@ -1,68 +1,66 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import pill, streak_tile, csrf %}
 {% block title %}{{ user.name }} · GrindMate{% endblock %}
 
 {% block content %}
-<div class="profile-grid">
+<div class="narrow stack">
 
-  <section class="card-soft profile-head">
-    <img class="avatar" src="{{ user.photo_url }}" alt="Profilfoto von {{ user.name }}">
-    <div class="profile-id">
-      <h1 class="profile-name">{{ user.name }}</h1>
-      <p class="profile-meta">
+  {# ---- Kopf ---- #}
+  <section class="card profile-head">
+    <img class="avatar avatar--lg" src="{{ user.photo_url }}" alt="Profilfoto von {{ user.name }}">
+    <div>
+      <h1 class="profile-head__name">{{ user.name }}</h1>
+      <p class="muted">
         {% if user.age %}{{ user.age }} Jahre{% endif %}
         {% if user.age and user.city %} · {% endif %}
         {% if user.city %}{{ user.city }}{% endif %}
       </p>
       <p class="reputation" title="Verlässlichkeit aus Aktivität und Partner-Bewertungen">
-        <span class="rep-star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="rep-max">/5</span>
+        <span class="reputation__star">★</span> {{ "%.1f"|format(user.reputation) }}<span class="reputation__max">/5</span>
         {% if user.avg_rating is not none %}
-          <span class="rep-note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
+          <span class="reputation__note">· {{ user.ratings_received|length }} Bewertung{{ '' if user.ratings_received|length == 1 else 'en' }}</span>
         {% endif %}
       </p>
     </div>
-    <div class="streak" title="Aktueller Streak">
-      <span class="streak-flame">▲</span>
-      <span class="streak-num">{{ user.streak }}</span>
-      <span class="streak-label">Tage<br>Streak</span>
-    </div>
+    {{ streak_tile(user.streak) }}
   </section>
 
+  {# ---- Verbindungs-Aktion / Bewertung ---- #}
   {% if user.id != current_user.id %}
-  <section class="card-soft">
+  <section class="card">
     {% if connection is none %}
       <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-ember">Verbindung anfragen</button>
+        {{ csrf() }}
+        <button class="btn btn--primary">Verbindung anfragen</button>
       </form>
     {% elif connection.status == "requested" %}
       {% if connection.user1_id == current_user.id %}
-        <p class="text-muted-custom mb-2">Anfrage wurde gesendet – auf Bestätigung warten.</p>
+        <p class="muted" style="margin-bottom:var(--space-3)">Anfrage wurde gesendet – auf Bestätigung warten.</p>
         <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-ghost btn-sm">Anfrage zurückziehen</button>
+          {{ csrf() }}
+          <button class="btn btn--secondary btn--sm">Anfrage zurückziehen</button>
         </form>
       {% else %}
-        <p class="text-muted-custom mb-2">{{ user.name }} möchte sich mit dir verbinden.</p>
-        <div class="d-flex gap-2">
+        <p class="muted" style="margin-bottom:var(--space-3)">{{ user.name }} möchte sich mit dir verbinden.</p>
+        <div class="cluster cluster--tight">
           <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-ember">Annehmen</button>
+            {{ csrf() }}
+            <button class="btn btn--primary">Annehmen</button>
           </form>
           <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-ghost">Ablehnen</button>
+            {{ csrf() }}
+            <button class="btn btn--secondary">Ablehnen</button>
           </form>
         </div>
       {% endif %}
     {% else %}
-      <p class="mb-2" style="color:#1a7f37;font-weight:600">✓ Ihr seid verbunden</p>
+      <p style="color:var(--success);font-weight:600;margin-bottom:var(--space-4)">✓ Ihr seid verbunden</p>
       {# FA-13 AK2: aktive Partner können sich gegenseitig bewerten #}
-      <form method="post" action="{{ url_for('main.rate_user', user_id=user.id) }}"
-            class="rating-form">
+      <form method="post" action="{{ url_for('main.rate_user', user_id=user.id) }}" class="rating-form">
         {{ rating_form.hidden_tag() }}
-        <label class="form-label mb-0">{{ rating_form.stars.label.text }}</label>
-        {{ rating_form.stars(class="form-select form-select-sm") }}
-        <button class="btn btn-ghost btn-sm" type="submit">
+        <label class="field__label" style="margin:0">{{ rating_form.stars.label.text }}</label>
+        {{ rating_form.stars(class="input") }}
+        <button class="btn btn--secondary btn--sm" type="submit">
           {{ "Bewertung ändern" if my_rating else "Bewerten" }}
         </button>
       </form>
@@ -70,37 +68,39 @@
   </section>
   {% endif %}
 
-  <section class="card-soft">
-    <p class="section-eyebrow">Commitments</p>
+  {# ---- Commitments ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Commitments</p>
     {% for goal in user.goals %}
-    <div class="goal-item{% if not loop.last %} mb-3 pb-3 goal-divider{% endif %}">
-      <span class="pill">{{ goal.goal_category }}</span>
+    <div class="goal-item">
+      {{ pill(goal.goal_category) }}
       <p class="goal-text">{{ goal.goal_text }}</p>
       <div class="commit-facts">
-        <div>
-          <span class="fact-label">Frequenz</span>
-          <span class="fact-value">{{ goal.frequency or "—" }}</span>
+        <div class="stat">
+          <span class="stat__label">Frequenz</span>
+          <span style="font-weight:600">{{ goal.frequency or "—" }}</span>
         </div>
-        <div>
-          <span class="fact-label">Check-in</span>
-          <span class="fact-value">{{ goal.preferred_checkin_time or "—" }}</span>
+        <div class="stat">
+          <span class="stat__label">Check-in</span>
+          <span style="font-weight:600">{{ goal.preferred_checkin_time or "—" }}</span>
         </div>
       </div>
     </div>
     {% else %}
-    <p class="text-muted-custom">Keine Commitments angegeben.</p>
+    <p class="muted">Keine Commitments angegeben.</p>
     {% endfor %}
   </section>
 
+  {# ---- Über mich ---- #}
   {% if user.bio %}
-  <section class="card-soft">
-    <p class="section-eyebrow">Über mich</p>
-    <p class="bio">{{ user.bio }}</p>
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-3)">Über mich</p>
+    <p>{{ user.bio }}</p>
   </section>
   {% endif %}
 
   <div>
-    <a href="{{ url_for('main.index') }}" class="btn btn-ghost btn-sm">← Zurück</a>
+    <a href="{{ url_for('main.search') }}" class="btn btn--secondary btn--sm">← Zurück zur Suche</a>
   </div>
 
 </div>

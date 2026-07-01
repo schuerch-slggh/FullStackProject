@@ -1,89 +1,102 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import pill, csrf %}
 {% block title %}Partner suchen · GrindMate{% endblock %}
 
 {% block content %}
-<div style="max-width:720px;margin:0 auto;">
+<div class="narrow-wide stack--lg stack">
 
-  <h1 class="profile-name mb-1">Partner finden</h1>
-  <p class="text-muted-custom mb-4">Filtere nach Kategorie, Frequenz oder Stadt — sortiert nach Übereinstimmung.</p>
-
-  <div class="card-soft mb-4">
-    <form method="get" action="{{ url_for('main.search') }}" class="row g-3">
-      <div class="col-md-3">
-        <label class="form-label">{{ form.category.label.text }}</label>
-        {{ form.category(class="form-select") }}
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">{{ form.frequency.label.text }}</label>
-        {{ form.frequency(class="form-select") }}
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">{{ form.city.label.text }}</label>
-        {{ form.city(class="form-control", placeholder="z.B. Zürich") }}
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
-        {{ form.submit(class="btn btn-ember w-100") }}
-      </div>
-    </form>
+  <div>
+    <h1>Partner finden</h1>
+    <p class="muted">Filtere nach Kategorie, Frequenz oder Stadt — Vorschläge sind nach Übereinstimmung sortiert.</p>
   </div>
 
+  {# ---- Filter ---- #}
+  <section class="card">
+    <form method="get" action="{{ url_for('main.search') }}" class="filter-grid">
+      <div class="field">
+        <label class="field__label">{{ form.category.label.text }}</label>
+        {{ form.category(class="input") }}
+      </div>
+      <div class="field">
+        <label class="field__label">{{ form.frequency.label.text }}</label>
+        {{ form.frequency(class="input") }}
+      </div>
+      <div class="field">
+        <label class="field__label">{{ form.city.label.text }}</label>
+        {{ form.city(class="input", placeholder="z.B. Zürich") }}
+      </div>
+      {# TODO: Distanz-Filter — SearchForm hat aktuell kein Distanz-/Radiusfeld.
+         Bräuchte ein neues Feld im Backend (forms.py + views.search). #}
+      <div class="field">
+        {{ form.submit(class="btn btn--primary btn--block") }}
+      </div>
+    </form>
+  </section>
+
+  {# ---- Ergebnisse / Match-Vorschläge ---- #}
   {% if searched %}
     {% if results %}
-      <p class="text-muted-custom mb-3">{{ results|length }} Treffer, nach Übereinstimmung sortiert</p>
+      <div class="stack">
+        <p class="muted">{{ results|length }} Treffer, nach Übereinstimmung sortiert</p>
 
-      {% for user, score, connection in results %}
-      <div class="card-soft mb-3 d-flex align-items-center gap-3">
-        <a href="{{ url_for('main.user_profile', user_id=user.id) }}">
-          <img class="avatar-sm" src="{{ user.photo_url }}" alt="Foto von {{ user.name }}">
-        </a>
-        <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-            <div>
-              <a href="{{ url_for('main.user_profile', user_id=user.id) }}"
-                 class="fw-semibold text-decoration-none" style="color:var(--ink)">{{ user.name }}</a>
-              {% if user.city %}<span class="text-muted-custom ms-2 small">{{ user.city }}</span>{% endif %}
-              <div class="mt-1">
-                {% for goal in user.goals %}
-                  <span class="pill" style="margin-bottom:.25rem">{{ goal.goal_category }}</span>
-                {% endfor %}
+        {# TODO: Ein eigener /match-Screen (nur Vorschläge, ohne Filter) bräuchte
+           eine neue Route im Backend. Aktuell liefert die Suche die Match-Logik
+           inkl. absteigender Sortierung nach Score. #}
+        <div class="result-list">
+          {% for user, score, connection in results %}
+          <div class="card result-card">
+            <a href="{{ url_for('main.user_profile', user_id=user.id) }}" aria-label="Profil von {{ user.name }}">
+              <img class="avatar avatar--sm" src="{{ user.photo_url }}" alt="Foto von {{ user.name }}">
+            </a>
+            <div class="result-card__body">
+              <a href="{{ url_for('main.user_profile', user_id=user.id) }}" class="result-card__name">{{ user.name }}</a>
+              {% if user.city %}<span class="muted" style="font-size:.9rem"> · {{ user.city }}</span>{% endif %}
+              <div class="result-card__tags">
+                {% for goal in user.goals %}{{ pill(goal.goal_category) }}{% endfor %}
               </div>
             </div>
-            <span class="score-badge" title="Match-Score">{{ score }}/4</span>
+
+            {# Match-Score als Prozent (score ist 0–4 → /4 skaliert) #}
+            <div class="match" title="Match-Score: {{ score }} von 4 Kriterien">
+              <span class="match__value">{{ (score / 4 * 100)|round|int }}%</span>
+              <span class="match__label">Match</span>
+            </div>
+
+            <div style="flex-shrink:0">
+              {% if connection is none %}
+                <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
+                  {{ csrf() }}
+                  <button class="btn btn--primary btn--sm">Verbinden</button>
+                </form>
+              {% elif connection.status == "requested" %}
+                {% if connection.user1_id == current_user.id %}
+                  <span class="muted" style="font-size:.85rem">Anfrage gesendet</span>
+                {% else %}
+                  <div class="stack--sm stack">
+                    <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
+                      {{ csrf() }}
+                      <button class="btn btn--success btn--sm btn--block">Annehmen</button>
+                    </form>
+                    <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
+                      {{ csrf() }}
+                      <button class="btn btn--secondary btn--sm btn--block">Ablehnen</button>
+                    </form>
+                  </div>
+                {% endif %}
+              {% else %}
+                {{ pill("Partner ✓", variant="success") }}
+              {% endif %}
+            </div>
           </div>
-        </div>
-        <div class="flex-shrink-0">
-          {% if connection is none %}
-            <form method="post" action="{{ url_for('main.send_connection', user_id=user.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-ember btn-sm">Verbinden</button>
-            </form>
-          {% elif connection.status == "requested" %}
-            {% if connection.user1_id == current_user.id %}
-              <span class="text-muted-custom small">Anfrage gesendet</span>
-            {% else %}
-              <div class="d-flex gap-1 flex-column">
-                <form method="post" action="{{ url_for('main.accept_connection', conn_id=connection.id) }}">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button class="btn btn-success btn-sm w-100">Annehmen</button>
-                </form>
-                <form method="post" action="{{ url_for('main.decline_connection', conn_id=connection.id) }}">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button class="btn btn-ghost btn-sm w-100">Ablehnen</button>
-                </form>
-              </div>
-            {% endif %}
-          {% else %}
-            <span class="pill-success">Partner ✓</span>
-          {% endif %}
+          {% endfor %}
         </div>
       </div>
-      {% endfor %}
 
     {% else %}
-      <div class="card-soft text-center py-5">
-        <p class="profile-name mb-1" style="font-size:1.4rem">Kein passender Partner gefunden.</p>
-        <p class="text-muted-custom">Versuch andere Filter oder lass einzelne Kriterien weg.</p>
-      </div>
+      <section class="card empty">
+        <p class="empty__title">Kein passender Partner gefunden.</p>
+        <p class="muted">Versuch andere Filter oder lass einzelne Kriterien weg.</p>
+      </section>
     {% endif %}
   {% endif %}
 

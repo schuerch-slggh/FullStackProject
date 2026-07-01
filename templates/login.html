@@ -1,32 +1,27 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import field %}
 {% block title %}Anmelden · GrindMate{% endblock %}
 
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card">
-    <p class="auth-eyebrow">Accountability-Partner</p>
-    <h1 class="auth-title">Dranbleiben,<br>gemeinsam.</h1>
-    <p class="auth-sub">Melde dich an, um dein Profil und deinen Streak zu sehen.</p>
+<div class="auth">
+  <div class="card">
+    <div class="auth__head">
+      <p class="eyebrow eyebrow--accent">Accountability-Partner</p>
+      <h1 class="auth__title">Dranbleiben,<br>gemeinsam.</h1>
+      <p class="muted">Melde dich an, um dein Profil und deinen Streak zu sehen.</p>
+    </div>
 
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
-      <div class="mb-3">
-        {{ form.email.label(class="form-label") }}
-        {{ form.email(class="form-control", placeholder="du@example.com", autocomplete="email") }}
-        {% for e in form.email.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-      <div class="mb-3">
-        {{ form.password.label(class="form-label") }}
-        {{ form.password(class="form-control", placeholder="••••••••", autocomplete="current-password") }}
-        {% for e in form.password.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
-      </div>
-      {{ form.submit(class="btn btn-ember w-100") }}
+      {{ field(form.email, "du@example.com", autocomplete="email") }}
+      {{ field(form.password, "••••••••", autocomplete="current-password") }}
+      {{ form.submit(class="btn btn--primary btn--block") }}
     </form>
 
-    <p class="auth-hint">
+    <p class="auth__hint">
       Noch kein Konto? <a href="{{ url_for('auth.register') }}">Konto erstellen</a>
     </p>
-    <p class="auth-hint auth-demo">
+    <p class="auth__demo muted center">
       Demo: <code>anna.keller@example.com</code> · <code>accountability</code>
     </p>
   </div>

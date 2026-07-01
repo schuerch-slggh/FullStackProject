@@ -2,20 +2,23 @@
 {% block title %}Einstellungen · GrindMate{% endblock %}
 
 {% block content %}
-<div class="profile-grid">
-  <section class="card-soft">
-    <p class="section-eyebrow">Einstellungen</p>
-    <form method="post" action="{{ url_for('main.settings') }}">
-      {{ form.hidden_tag() }}
-      <div class="form-check mb-3">
-        {{ form.notify_email(class="form-check-input") }}
-        {{ form.notify_email.label(class="form-check-label") }}
+<div class="narrow stack">
+  <div>
+    <h1>Einstellungen</h1>
+    <p class="muted">Steuere, wie GrindMate dich benachrichtigt.</p>
+  </div>
+
+  <section class="card">
+    <form method="post" action="{{ url_for('main.settings') }}" class="stack">
+      <div class="check">
+        {{ form.notify_email(id="notify_email") }}
+        {{ form.notify_email.label(class="field__label") }}
       </div>
-      <p class="text-muted-custom mb-3">
+      <p class="muted" style="font-size:.9rem;margin:0">
         Wir benachrichtigen dich per E-Mail bei neuen Nachrichten und
         Verbindungsanfragen. Chat-Inhalte werden dabei nicht mitgeschickt.
       </p>
-      <button type="submit" class="btn btn-ember">Speichern</button>
+      <div><button type="submit" class="btn btn--primary">Speichern</button></div>
     </form>
   </section>
 </div>

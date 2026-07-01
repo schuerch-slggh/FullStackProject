@@ -1,53 +1,46 @@
 {% extends "base.html" %}
+{% from "partials/_components.html" import field %}
 {% block title %}Konto erstellen · GrindMate{% endblock %}
 
-{% macro field(f, placeholder="") %}
-  <div class="mb-3">
-    {{ f.label(class="form-label") }}
-    {{ f(class="form-control", placeholder=placeholder) }}
-    {% for error in f.errors %}
-      <div class="field-error">{{ error }}</div>
-    {% endfor %}
-  </div>
-{% endmacro %}
-
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card auth-card-wide">
-    <p class="auth-eyebrow">Konto erstellen</p>
-    <h1 class="auth-title">Leg los mit<br>deinem Ziel.</h1>
-    <p class="auth-sub">Dein Profil entsteht direkt bei der Anmeldung.</p>
+<div class="auth auth--wide">
+  <div class="card">
+    <div class="auth__head">
+      <p class="eyebrow eyebrow--accent">Konto erstellen</p>
+      <h1 class="auth__title">Leg los mit<br>deinem Ziel.</h1>
+      <p class="muted">Dein Profil entsteht direkt bei der Anmeldung.</p>
+    </div>
 
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
 
       <p class="form-section">Konto</p>
-      {{ field(form.email, "du@example.com") }}
-      <div class="row">
-        <div class="col">{{ field(form.password, "min. 8 Zeichen") }}</div>
-        <div class="col">{{ field(form.confirm, "nochmal eingeben") }}</div>
+      {{ field(form.email, "du@example.com", autocomplete="email") }}
+      <div class="field-row">
+        {{ field(form.password, "min. 8 Zeichen", autocomplete="new-password") }}
+        {{ field(form.confirm, "nochmal eingeben", autocomplete="new-password") }}
       </div>
 
       <p class="form-section">Über dich</p>
       {{ field(form.name, "Vor- und Nachname") }}
-      <div class="row">
-        <div class="col">{{ field(form.age, "z.B. 24") }}</div>
-        <div class="col">{{ field(form.city, "z.B. Zürich") }}</div>
+      <div class="field-row">
+        {{ field(form.age, "z.B. 24") }}
+        {{ field(form.city, "z.B. Zürich") }}
       </div>
 
       <p class="form-section">Mein Commitment</p>
       {{ field(form.goal_category) }}
       {{ field(form.goal_text, "z.B. Bachelorarbeit fertig schreiben") }}
-      <div class="row">
-        <div class="col">{{ field(form.frequency, "z.B. 3x pro Woche") }}</div>
-        <div class="col">{{ field(form.preferred_checkin_time, "z.B. 20:00") }}</div>
+      <div class="field-row">
+        {{ field(form.frequency, "z.B. 3x pro Woche") }}
+        {{ field(form.preferred_checkin_time, "z.B. 20:00") }}
       </div>
       {{ field(form.bio, "Ein, zwei Sätze über dich und dein Ziel") }}
 
-      {{ form.submit(class="btn btn-ember w-100") }}
+      {{ form.submit(class="btn btn--primary btn--block") }}
     </form>
 
-    <p class="auth-hint">
+    <p class="auth__hint">
       Schon ein Konto? <a href="{{ url_for('auth.login') }}">Anmelden</a>
     </p>
   </div>

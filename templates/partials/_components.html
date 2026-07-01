@@ -1,0 +1,74 @@
+{# =========================================================================
+   Wiederverwendbare UI-Bausteine (Jinja-Macros).
+   Import in Templates:  {% from "partials/_components.html" import field, pill, stat, chat_bubble %}
+   Keine Backend-Logik — reine Darstellung gegen bestehende Variablen.
+   ========================================================================= #}
+
+{# --- Formularfeld: Label + Input + Fehler -------------------------------
+   Zusätzliche HTML-Attribute (z.B. autocomplete, rows) via **kwargs. #}
+{% macro field(f, placeholder="") %}
+  <div class="field">
+    {{ f.label(class="field__label") }}
+    {{ f(class="input", placeholder=placeholder, **kwargs) }}
+    {% for e in f.errors %}
+      <p class="field-error">{{ e }}</p>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{# --- Tag / Pill --------------------------------------------------------- #}
+{% macro pill(text, variant="") %}
+  <span class="pill{% if variant %} pill--{{ variant }}{% endif %}">{{ text }}</span>
+{% endmacro %}
+
+{# --- Stat-/Metrik-Block: grosse Zahl, kleines Label (Duna-Stil) --------- #}
+{% macro stat(value, label, accent=false) %}
+  <div class="stat{% if accent %} stat--accent{% endif %}">
+    <span class="stat__value">{{ value }}</span>
+    <span class="stat__label">{{ label }}</span>
+  </div>
+{% endmacro %}
+
+{# --- Streak-Kachel (Signal-Zahl im Mono-Stil) --------------------------- #}
+{% macro streak_tile(days, size="") %}
+  <div class="streak-tile{% if size %} streak-tile--{{ size }}{% endif %}" title="Aktueller Streak">
+    <span class="streak-tile__num">{{ days }}</span>
+    <span class="streak-tile__label">Tage Streak</span>
+  </div>
+{% endmacro %}
+
+{# --- Check-in-Gitter: präzises Zellenraster (Signature-Element) ---------
+   history = Liste mit .date und .count (letzte n Tage). Gefüllte Zelle = an
+   dem Tag eingecheckt. Rein darstellend gegen bestehende Variablen. #}
+{% macro checkin_grid(history) %}
+  <div class="checkin-grid" role="img"
+       aria-label="Check-in-Verlauf der letzten {{ history|length }} Tage">
+    {% for day in history %}
+      <div class="checkin-cell{% if day.count %} is-on{% endif %}"
+           title="{{ day.date.strftime('%d.%m.') }}: {{ day.count }} Check-in{{ '' if day.count == 1 else 's' }}"></div>
+    {% endfor %}
+  </div>
+  <div class="grid-legend" aria-hidden="true">
+    <span class="grid-legend__key"><span class="grid-legend__swatch is-on"></span>Eingecheckt</span>
+    <span class="grid-legend__key"><span class="grid-legend__swatch"></span>Kein Check-in</span>
+  </div>
+{% endmacro %}
+
+{# --- Chat-Nachrichten-Bubble -------------------------------------------
+   mine  = eigene Nachricht (rechts), sonst empfangen (links)
+   status = optionaler Status-Text (z.B. "Gelesen") nur bei eigenen. #}
+{% macro chat_bubble(text, time, mine=false, status=None) %}
+  <div class="chat-row {{ 'chat-row--mine' if mine else 'chat-row--theirs' }}">
+    <div class="bubble">
+      <p class="bubble__text">{{ text }}</p>
+      <span class="bubble__meta">
+        {{ time }}{% if mine and status %} · <span class="bubble__status">{{ status }}</span>{% endif %}
+      </span>
+    </div>
+  </div>
+{% endmacro %}
+
+{# --- Verstecktes CSRF-Feld für rohe POST-Formulare (ohne WTForms) ------- #}
+{% macro csrf() %}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
