@@ -2,11 +2,11 @@
 connections, chat & check-in."""
 import os
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, current_app,
-    abort, request, jsonify,
+    abort, request, jsonify, session,
 )
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -66,22 +66,66 @@ def _relative_when(when: datetime, today: date) -> str:
     return when.strftime("%d.%m.")
 
 
-def _partner_activity(partner_conns, *, days: int = 7, limit: int = 20):
-    """Chronologische Ereignisse der eigenen Partner (FA-12/FA-08, read-only).
+def _common_goal(user, partner):
+    """Das gemeinsame Ziel zweier Partner — die erste geteilte Zielkategorie.
 
-    Baut den Aktivitäts-Feed rein aus vorhandenen Daten: Check-ins der letzten
-    `days` Tage und aktuelle Streak-Meilensteine. Zugriffsschutz ist inhärent —
-    es werden nur die übergebenen (eigenen) Partnerschaften ausgewertet.
+    `Connection` speichert nicht, über welches Ziel der Match zustande kam
+    (TODO: dafür bräuchte es ein Schema-Feld, z.B. Connection.matched_goal_id).
+    Wir leiten deshalb die gemeinsame Kategorie ab und nehmen den Zieltext des
+    Partners in dieser Kategorie. Gibt None zurück, wenn es keine Überschneidung
+    gibt.
+    """
+    my_cats = {g.goal_category for g in user.goals}
+    for g in partner.goals:
+        if g.goal_category in my_cats:
+            return {"category": g.goal_category, "text": g.goal_text}
+    return None
+
+
+def _reminded_today(partner_id: int) -> bool:
+    """Wurde dieser Partner heute schon (in dieser Session) erinnert?
+
+    Rate-Limit ohne Schemaänderung über die Session (TODO: für ein durables,
+    gerätesübergreifendes Limit bräuchte es ein Feld/Table, z.B. Reminder).
+    """
+    return session.get("reminders_sent", {}).get(str(partner_id)) == date.today().isoformat()
+
+
+def _mark_reminded(partner_id: int) -> None:
+    sent = dict(session.get("reminders_sent", {}))
+    sent[str(partner_id)] = date.today().isoformat()
+    session["reminders_sent"] = sent
+
+
+def _remind_email(sender, partner, common):
+    """Freundlich-motivierende Erinnerungs-Mail (Ton der App)."""
+    ziel = f" für dein Ziel „{common['text']}“" if common else ""
+    subject = f"{sender.name} erinnert dich an deinen Check-in heute"
+    body = (
+        f"Hi {partner.name},\n\n"
+        f"{sender.name} hält dir auf GrindMate den Rücken frei: Du hast heute "
+        f"noch nicht eingecheckt{ziel}. Ein kurzer Check-in genügt, um deinen "
+        "Streak am Leben zu halten – du schaffst das!\n\n"
+        "Bis gleich in der App,\n"
+        "dein GrindMate-Team"
+    )
+    return subject, body
+
+
+def _partner_activity(partner_conns, *, limit: int = 25):
+    """Chronologischer Aktivitäts-Feed der eigenen Partner (FA-12/FA-08).
+
+    Listet ALLE Check-ins der Partner (neueste zuoberst) plus aktuelle
+    Streak-Meilensteine, gedeckelt auf `limit`. Rein aus vorhandenen Daten;
+    Zugriffsschutz ist inhärent — nur die übergebenen (eigenen) Partnerschaften
+    werden ausgewertet.
     """
     today = date.today()
-    cutoff = today - timedelta(days=days)
     events = []
     for conn in partner_conns:
         partner = conn.partner_of(current_user)
 
         for c in partner.checkins:
-            if c.checkin_date < cutoff:
-                continue
             when = c.created_at or datetime.combine(c.checkin_date, datetime.min.time())
             heute = c.checkin_date == today
             events.append({
@@ -93,20 +137,18 @@ def _partner_activity(partner_conns, *, days: int = 7, limit: int = 20):
                 "milestone": False,
             })
 
-        # Streak-Meilenstein: nur wenn die aktuelle Streak eine Schwelle trifft
-        # und der Lauf noch aktiv ist (letzter Check-in im Fenster).
+        # Streak-Meilenstein: aktuelle Streak trifft eine Schwelle.
         streak = partner.streak
         if streak in _STREAK_MILESTONES and partner.checkins:
             last = max(c.checkin_date for c in partner.checkins)
-            if last >= cutoff:
-                when = datetime.combine(last, datetime.max.time())
-                events.append({
-                    "icon": "★",
-                    "text": f"{partner.name} hat eine Streak von {streak} Tagen erreicht",
-                    "when": _relative_when(when, today),
-                    "sort": when,
-                    "milestone": True,
-                })
+            when = datetime.combine(last, datetime.max.time())
+            events.append({
+                "icon": "★",
+                "text": f"{partner.name} hat eine Streak von {streak} Tagen erreicht",
+                "when": _relative_when(when, today),
+                "sort": when,
+                "milestone": True,
+            })
 
     events.sort(key=lambda e: e["sort"], reverse=True)
     return events[:limit]
@@ -126,15 +168,21 @@ def grindprogress():
     partners = Connection.active_for(current_user.id)
     checkin_form = CheckinForm()
     checkin_form.goal.choices = _goal_choices(current_user)
-    # Kompakte Partner-Fortschritte (7-Tage-Mini-Gitter) für die Übersicht.
-    partner_progress = [
-        {
+    # Kompakte Partner-Fortschritte (7-Tage-Mini-Gitter) + Zustände für die
+    # Übersicht und den "Erinnern"-Button.
+    partner_progress = []
+    for conn in partners:
+        p = conn.partner_of(current_user)
+        partner_progress.append({
             "conn": conn,
-            "partner": conn.partner_of(current_user),
-            "history": checkin_history(conn.partner_of(current_user), days=7),
-        }
-        for conn in partners
-    ]
+            "partner": p,
+            "history": checkin_history(p, days=7),
+            "streak": p.streak,
+            "quote": round(p.activity_level * 100),
+            "common_goal": _common_goal(current_user, p),
+            "checked_in_today": _checked_in_today(p),
+            "reminded_today": _reminded_today(p.id),
+        })
     return render_template(
         "grindprogress.html",
         user=current_user,
@@ -145,6 +193,39 @@ def grindprogress():
         partner_progress=partner_progress,
         feed=_partner_activity(partners),
     )
+
+
+@main_bp.route("/partner/<int:user_id>/remind", methods=["POST"])
+@login_required
+def remind_partner(user_id):
+    """Erinnert einen Partner per E-Mail an seinen heute offenen Check-in.
+
+    Prüft aktive Partnerschaft (Zugriffsschutz), dass der Partner heute noch
+    nicht eingecheckt hat, und ein Rate-Limit von einer Erinnerung pro Tag.
+    Versand über den bestehenden Mailer (`notify`, respektiert das Opt-out).
+    Die Partner-E-Mail wird nur serverseitig verwendet.
+    """
+    conn = Connection.between(current_user.id, user_id)
+    if conn is None or conn.status != "active" or user_id == current_user.id:
+        return jsonify(ok=False, message="Keine aktive Partnerschaft."), 403
+
+    partner = db.get_or_404(User, user_id)
+    if _checked_in_today(partner):
+        return jsonify(ok=False, message=f"{partner.name} hat heute schon eingecheckt."), 200
+    if _reminded_today(partner.id):
+        return jsonify(ok=False, message=f"{partner.name} wurde heute schon erinnert."), 200
+    if not partner.notify_email:
+        return jsonify(ok=False, message=f"{partner.name} hat E-Mail-Benachrichtigungen deaktiviert."), 200
+
+    subject, body = _remind_email(current_user, partner, _common_goal(current_user, partner))
+    try:
+        notify(partner, subject, body)
+    except Exception:  # Versandfehler darf die App nicht abstürzen lassen
+        current_app.logger.exception("Erinnerungs-E-Mail an %s fehlgeschlagen", partner.id)
+        return jsonify(ok=False, message="E-Mail konnte gerade nicht gesendet werden. Versuch es später."), 200
+
+    _mark_reminded(partner.id)
+    return jsonify(ok=True, message=f"Erinnerung an {partner.name} per E-Mail gesendet.")
 
 
 @main_bp.route("/profile")

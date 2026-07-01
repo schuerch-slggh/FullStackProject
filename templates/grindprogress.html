@@ -69,15 +69,33 @@
         </a>
         <div class="partner-card__id">
           <a href="{{ url_for('main.user_profile', user_id=pp.partner.id) }}" class="partner-card__name">{{ pp.partner.name }}</a>
+          {% if pp.common_goal %}
+          <div class="partner-goal" title="Gemeinsames Ziel">
+            {{ pill(pp.common_goal.category) }}
+            <span class="partner-goal__text muted">{{ pp.common_goal.text }}</span>
+          </div>
+          {% endif %}
           <div class="partner-metrics">
-            <span class="partner-metric">Streak <b>{{ pp.partner.streak }}</b> Tage</span>
-            <span class="partner-metric">Quote <b>{{ (pp.partner.activity_level * 100)|round|int }}%</b></span>
+            <span class="partner-metric">Streak <b>{{ pp.streak }}</b> Tage</span>
+            <span class="partner-metric">Quote <b>{{ pp.quote }}%</b></span>
           </div>
         </div>
         <div class="partner-card__grid">
           {{ checkin_grid(pp.history, compact=true, legend=false) }}
         </div>
-        <a href="{{ url_for('main.chat', conn_id=pp.conn.id) }}" class="partner-card__chat">Chat →</a>
+        <div class="partner-card__actions">
+          <div class="cluster cluster--tight">
+            <a href="{{ url_for('main.chat', conn_id=pp.conn.id) }}" class="btn btn--secondary btn--sm">Chat</a>
+            <button type="button" class="btn btn--primary btn--sm js-remind"
+                    data-url="{{ url_for('main.remind_partner', user_id=pp.partner.id) }}"
+                    data-name="{{ pp.partner.name }}"
+                    {% if pp.checked_in_today or pp.reminded_today %}disabled{% endif %}>Erinnern</button>
+          </div>
+          <span class="partner-remind-note" role="status"
+                {% if not (pp.checked_in_today or pp.reminded_today) %}hidden{% endif %}>
+            {% if pp.checked_in_today %}heute schon eingecheckt{% elif pp.reminded_today %}heute schon erinnert{% endif %}
+          </span>
+        </div>
       </div>
     {% else %}
       <div class="empty">
@@ -107,4 +125,51 @@
   </section>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  const CSRF = "{{ csrf_token() }}";
+
+  // "Erinnern"-Button: sendet die Erinnerung per fetch, deaktiviert danach und
+  // zeigt die Rückmeldung. Fehler werden freundlich abgefangen (kein Crash).
+  document.querySelectorAll(".js-remind").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      if (btn.disabled) return;
+      const note = btn.closest(".partner-card__actions").querySelector(".partner-remind-note");
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = "Sende …";
+
+      try {
+        const res = await fetch(btn.dataset.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) {
+          btn.textContent = "Erinnert ✓";
+          showNote(note, data.message || ("Erinnerung an " + btn.dataset.name + " gesendet."));
+        } else {
+          // Fachliche Ablehnung (z.B. schon eingecheckt/erinnert): Button bleibt aus.
+          btn.textContent = prev;
+          showNote(note, data.message || "Erinnerung nicht möglich.");
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = prev;
+        showNote(note, "Netzwerkfehler – bitte später erneut versuchen.");
+      }
+    });
+  });
+
+  function showNote(note, text) {
+    if (!note) return;
+    note.textContent = text;
+    note.hidden = false;
+  }
+})();
+</script>
 {% endblock %}

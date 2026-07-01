@@ -1,4 +1,16 @@
+import os
+
 import pytest
+
+# Tests laufen IMMER gegen eine flüchtige In-Memory-SQLite — unabhängig von
+# einer in .env gesetzten (Remote-/MySQL-)DATABASE_URL. `create_app()` liest
+# DATABASE_URL beim Erstellen und ruft direkt `db.create_all()` auf; deshalb muss
+# die Überschreibung HIER geschehen (nach dem Import, der .env via load_dotenv
+# lädt, aber vor dem ersten create_app()-Aufruf in den Fixtures). Sonst würde
+# sich jede der vielen Test-Apps mit der echten DB verbinden und z.B. deren
+# Verbindungslimit sprengen.
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
 from FullStackProject import create_app, db as _db
 from FullStackProject.models import User, Goal, Photo
 

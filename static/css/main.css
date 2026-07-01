@@ -302,6 +302,9 @@ p  { margin: 0; }
 
 .btn--sm    { padding: .5rem .75rem; font-size: .76rem; }
 .btn--block { width: 100%; }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn:disabled:hover, .btn[disabled]:hover { background: var(--signal); border-color: var(--signal); }
+.btn--secondary:disabled:hover { background: transparent; border-color: var(--line-strong); }
 
 /* ==========================================================================
    6. Panels / Karten — bordered, flach, scharfkantig
@@ -830,22 +833,26 @@ input[type="file"]::file-selector-button {
   padding-top: var(--space-4);
   border-top: 1px solid var(--line);
 }
-.partner-card__id { display: flex; flex-direction: column; gap: .35rem; flex: 1 1 10rem; min-width: 0; }
+.partner-card__id { display: flex; flex-direction: column; gap: .4rem; flex: 1 1 12rem; min-width: 0; }
 .partner-card__name { font-family: var(--font-display); font-weight: 600; color: var(--text); }
 .partner-card__name:hover { color: var(--signal); }
+/* gemeinsames Ziel: Kategorie-Pill + gekürzter Zieltext */
+.partner-goal { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.partner-goal__text { font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .partner-metrics { display: flex; gap: var(--space-4); }
 .partner-metric { font-family: var(--font-mono); font-size: .76rem; letter-spacing: .04em; color: var(--text-dim); }
 .partner-metric b { color: var(--signal); font-weight: 600; }
-.partner-card__grid { flex: 0 1 220px; }
-.partner-card__chat {
+.partner-card__grid { flex: 0 1 200px; }
+/* Chat/Erinnern als konsistentes Button-Paar + Rückmeldung darunter */
+.partner-card__actions { display: flex; flex-direction: column; align-items: flex-end; gap: .4rem; flex: 0 0 auto; }
+.partner-remind-note {
   font-family: var(--font-mono);
-  color: var(--signal);
-  font-weight: 600;
-  font-size: .82rem;
-  letter-spacing: .02em;
-  white-space: nowrap;
+  font-size: .68rem;
+  letter-spacing: .03em;
+  color: var(--text-faint);
+  text-align: right;
+  max-width: 15rem;
 }
-.partner-card__chat:hover { color: var(--signal-bright); }
 
 /* ---- Grindprogress: Aktivitäts-Feed ---- */
 .feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -901,6 +908,8 @@ input[type="file"]::file-selector-button {
   .profile-head .streak-tile { grid-column: 1 / -1; }
   .checkin-form .input { flex-basis: 100%; }
   .partner-card__grid { flex-basis: 100%; }
+  .partner-card__actions { align-items: flex-start; }
+  .partner-remind-note { text-align: left; }
   .nav { gap: 0; flex-wrap: wrap; justify-content: flex-end; }
   .nav__link { padding: .45rem .4rem; font-size: .74rem; }
 }
