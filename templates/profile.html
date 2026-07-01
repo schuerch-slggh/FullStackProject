@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_components.html" import pill, streak_tile, checkin_grid, csrf %}
+{% from "partials/_components.html" import pill, streak_tile, csrf %}
 {% block title %}{{ user.name }} · GrindMate{% endblock %}
 
 {% block content %}
@@ -49,50 +49,6 @@
     </div>
   </section>
   {% endif %}
-
-  {# ---- Fällige Erinnerungen (FA-09) ---- #}
-  {% if reminders %}
-  <section class="card card--accent">
-    <p class="eyebrow" style="margin-bottom:var(--space-4)">Fällige Erinnerungen ({{ reminders|length }})</p>
-    <div class="stack">
-      {% for goal in reminders %}
-      <div class="goal-item">
-        {{ pill(goal.goal_category) }}
-        <p class="goal-text">{{ goal.goal_text }}</p>
-        <p class="muted">Geplant um {{ goal.preferred_checkin_time }} – jetzt einchecken.</p>
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {# ---- Check-in ---- #}
-  <section class="card">
-    <p class="eyebrow" style="margin-bottom:var(--space-3)">Check-in</p>
-    {% if checked_in_today %}
-      <p class="muted" style="margin-bottom:var(--space-4)">✓ Heute schon eingecheckt. Streak: {{ user.streak }} Tage.</p>
-    {% else %}
-      <p class="muted" style="margin-bottom:var(--space-4)">Heute noch nicht eingecheckt – halte deinen Streak am Leben.</p>
-    {% endif %}
-    <form method="post" action="{{ url_for('main.checkin') }}" class="checkin-form">
-      {{ checkin_form.hidden_tag() }}
-      {{ checkin_form.goal(class="input") }}
-      {{ checkin_form.note(class="input", placeholder="Notiz (optional)") }}
-      <button type="submit" class="btn btn--primary">Heute einchecken</button>
-    </form>
-  </section>
-
-  {# ---- Fortschritt: Check-in-Historie als Zellen-Gitter (FA-12 AK2) ---- #}
-  <section class="card">
-    <div class="cluster cluster--between" style="margin-bottom:var(--space-4)">
-      <p class="eyebrow" style="margin:0">Fortschritt · letzte 14 Tage</p>
-      <div class="stat" style="align-items:flex-end">
-        <span class="stat__value" style="font-size:1.5rem">{{ (user.activity_level * 100)|round|int }}%</span>
-        <span class="stat__label">Check-in-Quote</span>
-      </div>
-    </div>
-    {{ checkin_grid(history) }}
-  </section>
 
   {# ---- Partner ---- #}
   {% if partners %}

@@ -39,19 +39,34 @@
 
 {# --- Check-in-Gitter: präzises Zellenraster (Signature-Element) ---------
    history = Liste mit .date und .count (letzte n Tage). Gefüllte Zelle = an
-   dem Tag eingecheckt. Rein darstellend gegen bestehende Variablen. #}
-{% macro checkin_grid(history) %}
-  <div class="checkin-grid" role="img"
+   dem Tag eingecheckt. `compact` für Mini-Gitter (z.B. Partnerkarten),
+   `legend` blendet die Legende aus. Spaltenzahl = Länge der History. #}
+{% macro checkin_grid(history, compact=false, legend=true) %}
+  <div class="checkin-grid{% if compact %} checkin-grid--compact{% endif %}"
+       style="--cols: {{ history|length }}" role="img"
        aria-label="Check-in-Verlauf der letzten {{ history|length }} Tage">
     {% for day in history %}
       <div class="checkin-cell{% if day.count %} is-on{% endif %}"
            title="{{ day.date.strftime('%d.%m.') }}: {{ day.count }} Check-in{{ '' if day.count == 1 else 's' }}"></div>
     {% endfor %}
   </div>
+  {% if legend %}
   <div class="grid-legend" aria-hidden="true">
     <span class="grid-legend__key"><span class="grid-legend__swatch is-on"></span>Eingecheckt</span>
     <span class="grid-legend__key"><span class="grid-legend__swatch"></span>Kein Check-in</span>
   </div>
+  {% endif %}
+{% endmacro %}
+
+{# --- Aktivitäts-Feed-Eintrag -------------------------------------------
+   event = dict mit .icon, .text, .when (Anzeige-Zeit), .milestone (bool).
+   Rein darstellend gegen die in der Route berechneten Events. #}
+{% macro feed_item(event) %}
+  <li class="feed-item{% if event.milestone %} feed-item--milestone{% endif %}">
+    <span class="feed-item__icon" aria-hidden="true">{{ event.icon }}</span>
+    <span class="feed-item__body">{{ event.text }}</span>
+    <span class="feed-item__time">{{ event.when }}</span>
+  </li>
 {% endmacro %}
 
 {# --- Chat-Nachrichten-Bubble -------------------------------------------

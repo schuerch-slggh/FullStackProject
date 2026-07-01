@@ -2,7 +2,7 @@
 connections, chat & check-in."""
 import os
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, current_app,
@@ -50,11 +50,101 @@ def _touch_last_seen():
         db.session.commit()
 
 
+# Streak-Schwellen, die im Aktivitäts-Feed als Meilenstein hervorgehoben werden.
+_STREAK_MILESTONES = {3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 365}
+
+
+def _relative_when(when: datetime, today: date) -> str:
+    """Kurzes Mono-taugliches Zeitlabel für den Feed (heute/gestern/Datum)."""
+    delta = (today - when.date()).days
+    if delta <= 0:
+        return f"heute {when.strftime('%H:%M')}"
+    if delta == 1:
+        return "gestern"
+    if delta < 7:
+        return f"vor {delta} Tagen"
+    return when.strftime("%d.%m.")
+
+
+def _partner_activity(partner_conns, *, days: int = 7, limit: int = 20):
+    """Chronologische Ereignisse der eigenen Partner (FA-12/FA-08, read-only).
+
+    Baut den Aktivitäts-Feed rein aus vorhandenen Daten: Check-ins der letzten
+    `days` Tage und aktuelle Streak-Meilensteine. Zugriffsschutz ist inhärent —
+    es werden nur die übergebenen (eigenen) Partnerschaften ausgewertet.
+    """
+    today = date.today()
+    cutoff = today - timedelta(days=days)
+    events = []
+    for conn in partner_conns:
+        partner = conn.partner_of(current_user)
+
+        for c in partner.checkins:
+            if c.checkin_date < cutoff:
+                continue
+            when = c.created_at or datetime.combine(c.checkin_date, datetime.min.time())
+            heute = c.checkin_date == today
+            events.append({
+                "icon": "✓",
+                "text": f"{partner.name} hat {'heute ' if heute else ''}eingecheckt"
+                        + ("" if heute else f" ({c.checkin_date.strftime('%d.%m.')})"),
+                "when": _relative_when(when, today),
+                "sort": when,
+                "milestone": False,
+            })
+
+        # Streak-Meilenstein: nur wenn die aktuelle Streak eine Schwelle trifft
+        # und der Lauf noch aktiv ist (letzter Check-in im Fenster).
+        streak = partner.streak
+        if streak in _STREAK_MILESTONES and partner.checkins:
+            last = max(c.checkin_date for c in partner.checkins)
+            if last >= cutoff:
+                when = datetime.combine(last, datetime.max.time())
+                events.append({
+                    "icon": "★",
+                    "text": f"{partner.name} hat eine Streak von {streak} Tagen erreicht",
+                    "when": _relative_when(when, today),
+                    "sort": when,
+                    "milestone": True,
+                })
+
+    events.sort(key=lambda e: e["sort"], reverse=True)
+    return events[:limit]
+
+
 @main_bp.route("/")
 def index():
     if current_user.is_authenticated:
-        return redirect(url_for("main.profile"))
+        return redirect(url_for("main.grindprogress"))
     return render_template("landing.html")
+
+
+@main_bp.route("/grindprogress")
+@login_required
+def grindprogress():
+    """Startseite: eigenes Check-in/Fortschritts-Dashboard + Partner & Feed."""
+    partners = Connection.active_for(current_user.id)
+    checkin_form = CheckinForm()
+    checkin_form.goal.choices = _goal_choices(current_user)
+    # Kompakte Partner-Fortschritte (7-Tage-Mini-Gitter) für die Übersicht.
+    partner_progress = [
+        {
+            "conn": conn,
+            "partner": conn.partner_of(current_user),
+            "history": checkin_history(conn.partner_of(current_user), days=7),
+        }
+        for conn in partners
+    ]
+    return render_template(
+        "grindprogress.html",
+        user=current_user,
+        checkin_form=checkin_form,
+        checked_in_today=_checked_in_today(current_user),
+        reminders=due_reminders(current_user),
+        history=checkin_history(current_user),
+        partner_progress=partner_progress,
+        feed=_partner_activity(partners),
+    )
 
 
 @main_bp.route("/profile")
@@ -64,17 +154,11 @@ def profile():
         user2_id=current_user.id, status="requested"
     ).all()
     partners = Connection.active_for(current_user.id)
-    checkin_form = CheckinForm()
-    checkin_form.goal.choices = _goal_choices(current_user)
     return render_template(
         "profile.html",
         user=current_user,
         pending_requests=pending_requests,
         partners=partners,
-        checkin_form=checkin_form,
-        checked_in_today=_checked_in_today(current_user),
-        reminders=due_reminders(current_user),
-        history=checkin_history(current_user),
     )
 
 
@@ -283,7 +367,7 @@ def checkin():
     form.goal.choices = _goal_choices(current_user)
     if not form.validate_on_submit():
         flash("Check-in konnte nicht gespeichert werden.", "danger")
-        return redirect(url_for("main.profile"))
+        return redirect(url_for("main.grindprogress"))
 
     goal_id = int(form.goal.data) if form.goal.data else None
     today = date.today()
@@ -292,7 +376,7 @@ def checkin():
     ).first()
     if already:
         flash("Für heute ist hier bereits ein Check-in erfasst.", "info")
-        return redirect(url_for("main.profile"))
+        return redirect(url_for("main.grindprogress"))
 
     db.session.add(Checkin(
         user_id=current_user.id,
@@ -302,7 +386,7 @@ def checkin():
     ))
     db.session.commit()
     flash("Check-in erfasst – weiter so!", "success")
-    return redirect(url_for("main.profile"))
+    return redirect(url_for("main.grindprogress"))
 
 
 @main_bp.route("/chat/<int:conn_id>", methods=["GET", "POST"])

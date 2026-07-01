@@ -469,9 +469,11 @@ input[type="file"]::file-selector-button {
    ========================================================================== */
 .checkin-grid {
   display: grid;
-  grid-template-columns: repeat(14, 1fr);
+  grid-template-columns: repeat(var(--cols, 14), 1fr);
   gap: 4px;
 }
+/* kompaktes Mini-Gitter (Partnerkarten): kleiner + gedeckelte Breite */
+.checkin-grid--compact { gap: 3px; max-width: 240px; }
 .checkin-cell {
   aspect-ratio: 1 / 1;
   background: var(--surface-2);
@@ -815,6 +817,70 @@ input[type="file"]::file-selector-button {
 .rating-form { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .rating-form select { width: auto; }
 
+/* ---- Grindprogress: Partner-Übersicht ---- */
+.partner-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-block: .3rem;
+}
+.partner-card + .partner-card {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.partner-card__id { display: flex; flex-direction: column; gap: .35rem; flex: 1 1 10rem; min-width: 0; }
+.partner-card__name { font-family: var(--font-display); font-weight: 600; color: var(--text); }
+.partner-card__name:hover { color: var(--signal); }
+.partner-metrics { display: flex; gap: var(--space-4); }
+.partner-metric { font-family: var(--font-mono); font-size: .76rem; letter-spacing: .04em; color: var(--text-dim); }
+.partner-metric b { color: var(--signal); font-weight: 600; }
+.partner-card__grid { flex: 0 1 220px; }
+.partner-card__chat {
+  font-family: var(--font-mono);
+  color: var(--signal);
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.partner-card__chat:hover { color: var(--signal-bright); }
+
+/* ---- Grindprogress: Aktivitäts-Feed ---- */
+.feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.feed-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+}
+.feed-item + .feed-item { border-top: 1px solid var(--line); }
+.feed-item__icon {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: center;
+}
+.feed-item__body { flex: 1 1 auto; min-width: 0; color: var(--text-dim); }
+.feed-item__time {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  letter-spacing: .04em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Meilensteine hervorheben: Signal-Kante + Tönung */
+.feed-item--milestone {
+  border-left: 2px solid var(--signal);
+  padding-left: var(--space-3);
+  background: var(--signal-wash);
+}
+.feed-item--milestone .feed-item__icon { color: var(--signal); }
+.feed-item--milestone .feed-item__body { color: var(--text); }
+
 /* ==========================================================================
    RESPONSIVE (NFA-06): kein horizontales Scrollen bis Smartphone-Breite
    ========================================================================== */
@@ -834,8 +900,9 @@ input[type="file"]::file-selector-button {
   .profile-head { grid-template-columns: auto 1fr; }
   .profile-head .streak-tile { grid-column: 1 / -1; }
   .checkin-form .input { flex-basis: 100%; }
-  .nav { gap: 0; }
-  .nav__link { padding: .45rem .45rem; font-size: .76rem; }
+  .partner-card__grid { flex-basis: 100%; }
+  .nav { gap: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .nav__link { padding: .45rem .4rem; font-size: .74rem; }
 }
 
 /* ---- Reduced Motion ---- */

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "partials/_components.html" import pill, streak_tile, checkin_grid, feed_item, csrf %}
+{% block title %}Grindprogress · GrindMate{% endblock %}
+
+{% block content %}
+<div class="narrow stack">
+
+  {# ---- Kopf ---- #}
+  <section class="card profile-head">
+    <div class="grow">
+      <p class="eyebrow eyebrow--accent" style="margin-bottom:var(--space-2)">Dein Fortschritt</p>
+      <h1 class="profile-head__name">Grindprogress</h1>
+      <p class="muted">Dein Check-in, dein Verlauf und der Fortschritt deiner Partner — alles an einem Ort.</p>
+    </div>
+    {{ streak_tile(user.streak) }}
+  </section>
+
+  {# ---- Fällige Erinnerungen (FA-09) ---- #}
+  {% if reminders %}
+  <section class="card card--accent">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Fällige Erinnerungen ({{ reminders|length }})</p>
+    <div class="stack">
+      {% for goal in reminders %}
+      <div class="goal-item">
+        {{ pill(goal.goal_category) }}
+        <p class="goal-text">{{ goal.goal_text }}</p>
+        <p class="muted">Geplant um {{ goal.preferred_checkin_time }} – jetzt einchecken.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ---- a) Eigener Check-in ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-3)">Check-in</p>
+    {% if checked_in_today %}
+      <p class="muted" style="margin-bottom:var(--space-4)">✓ Heute schon eingecheckt. Streak: {{ user.streak }} Tage.</p>
+    {% else %}
+      <p class="muted" style="margin-bottom:var(--space-4)">Heute noch nicht eingecheckt – halte deinen Streak am Leben.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.checkin') }}" class="checkin-form">
+      {{ checkin_form.hidden_tag() }}
+      {{ checkin_form.goal(class="input") }}
+      {{ checkin_form.note(class="input", placeholder="Notiz (optional)") }}
+      <button type="submit" class="btn btn--primary">Heute einchecken</button>
+    </form>
+  </section>
+
+  {# ---- b) Eigener Fortschritt (FA-12 AK2) ---- #}
+  <section class="card">
+    <div class="cluster cluster--between" style="margin-bottom:var(--space-4)">
+      <p class="eyebrow" style="margin:0">Fortschritt · letzte 14 Tage</p>
+      <div class="stat" style="align-items:flex-end">
+        <span class="stat__value" style="font-size:1.5rem">{{ (user.activity_level * 100)|round|int }}%</span>
+        <span class="stat__label">Check-in-Quote</span>
+      </div>
+    </div>
+    {{ checkin_grid(history) }}
+  </section>
+
+  {# ---- c) Partner-Übersicht ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Partner-Fortschritt</p>
+    {% for pp in partner_progress %}
+      <div class="partner-card">
+        <a href="{{ url_for('main.user_profile', user_id=pp.partner.id) }}" aria-label="Profil von {{ pp.partner.name }}">
+          <img class="avatar avatar--sm" src="{{ pp.partner.photo_url }}" alt="Profilfoto von {{ pp.partner.name }}">
+        </a>
+        <div class="partner-card__id">
+          <a href="{{ url_for('main.user_profile', user_id=pp.partner.id) }}" class="partner-card__name">{{ pp.partner.name }}</a>
+          <div class="partner-metrics">
+            <span class="partner-metric">Streak <b>{{ pp.partner.streak }}</b> Tage</span>
+            <span class="partner-metric">Quote <b>{{ (pp.partner.activity_level * 100)|round|int }}%</b></span>
+          </div>
+        </div>
+        <div class="partner-card__grid">
+          {{ checkin_grid(pp.history, compact=true, legend=false) }}
+        </div>
+        <a href="{{ url_for('main.chat', conn_id=pp.conn.id) }}" class="partner-card__chat">Chat →</a>
+      </div>
+    {% else %}
+      <div class="empty">
+        <p class="empty__title">Noch keine Partner</p>
+        <p class="muted">Finde jemanden mit ähnlichem Ziel und zieht es gemeinsam durch.
+          <a href="{{ url_for('main.search') }}">Partner suchen</a>
+        </p>
+      </div>
+    {% endfor %}
+  </section>
+
+  {# ---- d) Aktivitäts-Feed ---- #}
+  <section class="card">
+    <p class="eyebrow" style="margin-bottom:var(--space-4)">Aktivität deiner Partner</p>
+    {% if feed %}
+      <ul class="feed">
+        {% for event in feed %}
+          {{ feed_item(event) }}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty__title">Noch nichts los</p>
+        <p class="muted">Sobald deine Partner einchecken oder einen Streak-Meilenstein erreichen, erscheint es hier.</p>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}
