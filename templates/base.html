@@ -7,8 +7,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  {# Typo-System: Space Grotesk (Display) · IBM Plex Mono (Zahlen/Labels) · Inter (Fliesstext) #}
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  {# Editorial Mono: Playfair Display (Headlines/Metrik) · IBM Plex Mono (Labels/Meta) · Inter (Fliesstext) #}
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
 </head>
 <body>
@@ -18,7 +18,7 @@
   <header class="site-header">
     <div class="container site-header__inner">
       <a class="brand" href="{{ url_for('main.index') }}">
-        <span class="brand__mark">◆</span> GRIND<span class="brand__accent">MATE</span>
+        GrindMate<span class="brand__accent">.</span>
       </a>
       <nav class="nav" aria-label="Hauptnavigation">
         {% if current_user.is_authenticated %}
@@ -44,7 +44,7 @@
           <div class="flash-region">
             {% for category, message in messages %}
               <div class="flash flash--{{ category }}" role="status">
-                <span class="flash__tag">{{ {'success':'OK','danger':'ERR','info':'LOG','warning':'!'}.get(category, 'LOG') }}</span>
+                <span class="flash__tag">{{ {'success':'Notiz','danger':'Fehler','info':'Notiz','warning':'Achtung'}.get(category, 'Notiz') }}</span>
                 <span>{{ message }}</span>
               </div>
             {% endfor %}
@@ -58,8 +58,8 @@
 
   <footer class="site-footer">
     <div class="container site-footer__inner">
-      <span class="site-footer__brand">◆ GRINDMATE</span>
-      <span class="site-footer__meta">ACCOUNTABILITY-LOGBUCH · FS2026</span>
+      <span class="site-footer__brand">GrindMate</span>
+      <span class="site-footer__meta">DIE ACCOUNTABILITY-AUSGABE · FS2026</span>
     </div>
   </footer>
 
