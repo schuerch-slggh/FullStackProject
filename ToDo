@@ -1,14 +1,10 @@
-- design
-- momentum name ändern
- 
-- matching anschauen / transparenter Matches anzeigen
-- mailserver
-- db Anbindung
-- deployen
-- Auf Startseite soll irgendwie angezeigt werden, dass der Partner sein Check-In gemacht hat
+- design 
+- matching anpassen (Text-Vergleich mit KI)
 - Distanz von Location ausrechnen
 - Terminvereinbarung bei Partner
+- Erinnern-Button testen
 - Erklärungen, wie Match-Prozent zustande gekommen ist
 - Frequenz und Zeit Angabe soll nicht Freitext sein
 - Testfrequenzen
+- deployen
 - Changelog
