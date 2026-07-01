@@ -17,3 +17,4 @@ email-validator
 anthropic
 python-dotenv
 pytest
+gunicorn

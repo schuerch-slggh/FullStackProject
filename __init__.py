@@ -29,9 +29,9 @@ def create_app():
 
     # Default: SQLite file in the instance/ folder. Switch to MySQL later by
     # setting DATABASE_URL, e.g. mysql+pymysql://user:pass@localhost:3306/db
-    # instance/ und static/uploads liegen auf Plattformen mit read-only
-    # Filesystem (z.B. Vercel-Serverless, wo nur /tmp beschreibbar ist) nicht
-    # an; ohne DATABASE_URL (MySQL) waere die App dort ohnehin nicht lauffaehig.
+    # Defensiv, da instance/ auf manchen Hosting-Plattformen (read-only
+    # Filesystem ausserhalb eines temporaeren Verzeichnisses) nicht anlegbar
+    # ist; ohne DATABASE_URL (MySQL) waere die App dort ohnehin nicht lauffaehig.
     try:
         os.makedirs(app.instance_path, exist_ok=True)
     except OSError:

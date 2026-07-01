@@ -474,6 +474,23 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   „< 5 min". Lese-Status (`Message.read_at`) wird beim Öffnen des Chats gesetzt.
   Bewusst kein WebSocket/Polling — im Stack nicht vorhanden, für den MVP nicht
   nötig (Reload zeigt den aktuellen Stand).
+- **Prod-Deployment via Gunicorn statt Vercel:** Vercel ist auf zustandslose
+  Serverless-Functions ausgelegt und passt nicht zu dieser klassischen,
+  serverseitig gerenderten Flask-App (persistente DB-Verbindung, lokale
+  Foto-Uploads, read-only Filesystem außerhalb `/tmp` ließ `os.makedirs` für
+  `instance/`/`static/uploads` abstürzen). Deployment-Ziel ist jetzt Render
+  (`render.yaml`). Neuer Prod-Einstiegspunkt `wsgi.py`: `main.py` nutzt
+  `from . import create_app`, was nur unter `flask --app main run`
+  funktioniert (Flasks CLI löst das Projektverzeichnis anhand des Ordnernamens
+  als Package auf); Gunicorn importiert Module direkt ohne diese Auflösung,
+  wodurch alle relativen Imports (`from . import db` in `auth.py`, `views.py`,
+  `models.py`, `seed.py`) mit `ImportError` fehlschlagen würden. `wsgi.py`
+  bildet die Package-Auflösung von Flask nach (Eltern-Verzeichnis in
+  `sys.path`, Projektordner per `importlib` unter seinem tatsächlichen Namen
+  importieren) und ist damit unabhängig vom Ordnernamen auf dem Zielserver.
+  `os.makedirs`-Aufrufe in `create_app()` sind zusätzlich defensiv (try/except
+  `OSError`), da einzelne Hosting-Plattformen weiterhin ein read-only
+  Filesystem haben können.
 - **Offen / Risiken:** MySQL-Integration noch ausstehend (→ M8). Test-Infrastruktur
   seit M2 vorhanden; Smoke-Tests für M0/M1-Funktionalität in M8 ergänzen.
   E-Mail bei fälligem Check-in (Teil von FA-10 AK1) bräuchte einen Scheduler →

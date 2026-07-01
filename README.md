@@ -60,6 +60,21 @@ Ohne `MAIL_SERVER` werden E-Mails nur geloggt; ohne `ANTHROPIC_API_KEY` nutzt de
 KI-Coach eine deterministische lokale Formulierung. Beides hält die App ohne
 externe Dienste lauffähig.
 
+## Deployment (Render)
+
+Das Repo enthält eine `render.yaml` für Infra-as-Code. In Render:
+"New" → "Blueprint" → dieses Repo auswählen → Render liest `render.yaml`
+automatisch (Build: `pip install -r requirements.txt`, Start:
+`gunicorn wsgi:app`). Danach unter "Environment" die als `sync: false`
+markierten Variablen manuell setzen: `SECRET_KEY`, `DATABASE_URL` (MySQL,
+da SQLite auf Render nicht persistiert), optional `MAIL_*` und
+`ANTHROPIC_API_KEY`.
+
+`wsgi.py` ist der Prod-Einstiegspunkt (statt `main.py`), da Gunicorn Module
+direkt importiert und die relativen Imports der App (`from . import db` etc.)
+sonst kein Parent-Package finden — `flask --app main run` löst das nur lokal
+per CLI-Magie auf.
+
 ## Routen
 
 | Route | Beschreibung |
