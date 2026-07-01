@@ -35,6 +35,14 @@ pytest tests/ -v
 
 ## Konfiguration
 
+Variablen lokal per `.env`-Datei setzen (wird automatisch via `python-dotenv`
+geladen, liegt in `.gitignore` und wird nie committet):
+
+```bash
+cp .env.example .env
+# .env bearbeiten und echte Werte eintragen
+```
+
 | Variable | Zweck | Standard |
 |---|---|---|
 | `SECRET_KEY` | Session-Sicherheit | `dev-secret-change-me` |

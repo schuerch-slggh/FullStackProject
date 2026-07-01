@@ -5,10 +5,15 @@ __init__.py builds the Flask app via create_app(), main.py runs it.
 """
 import os
 
+from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
+
+# Liest .env im Projekt-Root (falls vorhanden) in os.environ ein, bevor die
+# Config unten daraus gelesen wird. Ohne .env-Datei passiert einfach nichts.
+load_dotenv()
 
 # Extensions are created here (unbound) and bound to the app inside create_app.
 db = SQLAlchemy()
