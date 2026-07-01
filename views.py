@@ -8,7 +8,7 @@ from flask import (
     Blueprint, render_template, redirect, url_for, flash, current_app,
     abort, request, jsonify, session,
 )
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, logout_user
 from werkzeug.utils import secure_filename
 
 from . import db
@@ -19,7 +19,7 @@ from .models import (
 )
 from .forms import (
     EditProfileForm, GoalForm, SearchForm, MessageForm, CheckinForm,
-    SettingsForm, RatingForm, compose_frequency,
+    SettingsForm, DeleteAccountForm, RatingForm, compose_frequency,
 )
 from .mailer import notify
 from .coach import chat_reply, coach_headline
@@ -650,7 +650,37 @@ def settings():
         # Checkbox-Zustand für die Anzeige vorbelegen (nicht via obj, sonst
         # bleibt ein abgewähltes Häkchen beim POST auf dem alten Wert).
         form.notify_email.data = current_user.notify_email
-    return render_template("settings.html", form=form)
+    return render_template("settings.html", form=form, delete_form=DeleteAccountForm())
+
+
+@main_bp.route("/account/delete", methods=["POST"])
+@login_required
+def delete_account():
+    """Löscht das EIGENE Konto (nur der eingeloggte Nutzer) samt aller
+    abhängigen Daten. Bestätigung über das eigene Passwort (Zugriffsschutz:
+    keine Konto-ID vom Client, immer `current_user`)."""
+    form = DeleteAccountForm()
+    if not form.validate_on_submit() or not current_user.check_password(form.password.data):
+        flash("Passwort falsch – Konto wurde nicht gelöscht.", "danger")
+        return redirect(url_for("main.settings"))
+
+    user = current_user._get_current_object()
+    name = user.name
+
+    # Zuerst die Partnerschaften des Nutzers löschen — das entfernt via Cascade
+    # zugehörige Nachrichten und Termine. Danach löscht der User-Delete die
+    # restlichen abhängigen Daten (Ziele, Fotos, Check-ins, Bewertungen).
+    for conn in Connection.query.filter(
+        db.or_(Connection.user1_id == user.id, Connection.user2_id == user.id)
+    ).all():
+        db.session.delete(conn)
+
+    logout_user()
+    db.session.delete(user)
+    db.session.commit()
+
+    flash(f"Dein Konto wurde gelöscht. Alles Gute, {name}!", "info")
+    return redirect(url_for("auth.login"))
 
 
 _WEEKDAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]

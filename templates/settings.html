@@ -10,6 +10,7 @@
 
   <section class="card">
     <form method="post" action="{{ url_for('main.settings') }}" class="stack">
+      {{ form.hidden_tag() }}
       <div class="check">
         {{ form.notify_email(id="notify_email") }}
         {{ form.notify_email.label(class="field__label") }}
@@ -19,6 +20,26 @@
         Verbindungsanfragen. Chat-Inhalte werden dabei nicht mitgeschickt.
       </p>
       <div><button type="submit" class="btn btn--primary">Speichern</button></div>
+    </form>
+  </section>
+
+  {# ---- Gefahrenbereich: Konto löschen ---- #}
+  <section class="card danger-zone">
+    <p class="eyebrow danger-zone__label">Gefahrenzone</p>
+    <h2 class="danger-zone__title">Konto löschen</h2>
+    <p class="muted" style="margin-bottom:var(--space-4)">
+      Das Löschen ist <strong>endgültig</strong> und kann nicht rückgängig gemacht
+      werden. Entfernt werden dein Profil, deine Partnerschaften, alle Nachrichten,
+      Check-ins, Termine sowie deine Bewertungen. Gib zur Bestätigung dein Passwort ein.
+    </p>
+    <form method="post" action="{{ url_for('main.delete_account') }}" class="stack--sm stack"
+          onsubmit="return confirm('Konto wirklich endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden.');">
+      {{ delete_form.hidden_tag() }}
+      <div class="field" style="margin:0;max-width:20rem">
+        {{ delete_form.password.label(class="field__label") }}
+        {{ delete_form.password(class="input", autocomplete="current-password", placeholder="Dein Passwort") }}
+      </div>
+      <div><button type="submit" class="btn btn--danger">Konto endgültig löschen</button></div>
     </form>
   </section>
 </div>

@@ -1,4 +1,4 @@
-"""Seed the database with 10 dummy profiles.
+"""Seed the database with 11 dummy profiles.
 
 Run with:  flask --app main seed
 All demo accounts share the password:  accountability
@@ -115,6 +115,17 @@ DUMMIES = [
         goals=[
             dict(goal_category="Sport", goal_text="Bouldern 2x pro Woche",
                  frequency="2x pro Woche", preferred_checkin_time="17:30"),
+        ],
+    ),
+    dict(
+        # streak=0 → keine Check-ins, also auch heute keiner (Test-Ausgangslage).
+        user=dict(email="max.muster@example.com", name="Max Muster", age=28, city="Zürich",
+                  streak=0,
+                  bio="Testnutzer ohne heutigen Check-in. Neu dabei und noch nicht gestartet."),
+        photo="https://i.pravatar.cc/300?img=8",
+        goals=[
+            dict(goal_category="Sport", goal_text="3x pro Woche joggen",
+                 frequency="3x pro Woche", preferred_checkin_time="18:00"),
         ],
     ),
 ]
@@ -332,7 +343,7 @@ def seed_bulk(count: int = 100, rng_seed: int = 42):
 def register_cli(app):
     @app.cli.command("seed")
     def seed_command():
-        """Insert 10 dummy profiles (skips if the DB already has data)."""
+        """Insert 11 dummy profiles (skips if the DB already has data)."""
         count = seed_db()
         if count:
             click.echo(f"{count} Profile angelegt. Login z.B.: anna.keller@example.com / {DEMO_PASSWORD}")

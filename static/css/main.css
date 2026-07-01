@@ -300,11 +300,25 @@ p  { margin: 0; }
 }
 .btn--success:hover { background: rgba(201, 242, 39, .18); color: var(--signal-bright); }
 
+/* destruktive Variante — rot umrandet, füllt sich beim Hover (unmissverständlich) */
+.btn--danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn--danger:hover { background: var(--danger); color: var(--ink-900); border-color: var(--danger); }
+
 .btn--sm    { padding: .5rem .75rem; font-size: .76rem; }
 .btn--block { width: 100%; }
 .btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; }
 .btn:disabled:hover, .btn[disabled]:hover { background: var(--signal); border-color: var(--signal); }
 .btn--secondary:disabled:hover { background: transparent; border-color: var(--line-strong); }
+.btn--danger:disabled:hover { background: transparent; color: var(--danger); border-color: var(--danger); }
+
+/* Gefahrenbereich (Konto löschen) — klar abgesetzt durch rote Kante */
+.danger-zone { border-color: var(--danger); border-left: 2px solid var(--danger); }
+.danger-zone__label { color: var(--danger); margin-bottom: var(--space-2); }
+.danger-zone__title { color: var(--text); margin-bottom: var(--space-3); }
 
 /* ==========================================================================
    6. Panels / Karten — bordered, flach, scharfkantig

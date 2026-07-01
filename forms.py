@@ -149,6 +149,13 @@ class SettingsForm(FlaskForm):
     submit = SubmitField("Speichern")
 
 
+class DeleteAccountForm(FlaskForm):
+    """Konto-Löschung — verlangt das eigene Passwort zur Bestätigung."""
+
+    password = PasswordField("Passwort zur Bestätigung", validators=[DataRequired()])
+    submit = SubmitField("Konto endgültig löschen")
+
+
 class CoachGoalForm(FlaskForm):
     """Vages Ziel, das der KI-Coach konkreter formuliert (FA-11 AK2)."""
 
