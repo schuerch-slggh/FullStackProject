@@ -87,7 +87,7 @@ per CLI-Magie auf.
 | `/goals/new` | Commitment hinzufügen |
 | `/goals/<id>/delete` | Commitment löschen (POST) |
 | `/u/<id>` | Fremdprofil ansehen |
-| `/search` | Partner suchen + Match-Score (GET) |
+| `/search` | Partner suchen + Match-Score in % (GET) |
 | `/matches` | Top-3-Match-Vorschläge je eigenem Ziel, ohne Filter (GET) |
 | `/connect/<id>` | Verbindungsanfrage senden (POST) |
 | `/connections/<id>/accept` | Anfrage annehmen (POST) |
@@ -114,11 +114,15 @@ views.py         Blueprint: Profil (Erinnerungen + Fortschritts-Diagramm), Bearb
                             before_app_request setzt last_seen
 models.py        SQLAlchemy-Entities (User, Goal, Photo, Connection, Message, Checkin,
                  Rating)
-                 + Domain-Helfer: match_score(), top_matches_for_goal(), due_reminders(),
-                   checkin_history(), Connection.between()/.active_for()/.involves()/
-                   .partner_of(); berechnete Properties User.streak/.reputation/
-                   .activity_level/.avg_rating/.is_online; Spalten User.notify_email/
-                   .last_seen, Message.read_at
+                 + Domain-Helfer: match_score()/match_breakdown() (Matching v2a:
+                   gewichteter Kompatibilitäts-Score in [0,1] aus domain/rhythm/
+                   timefit/reliab/intensity statt 0–4-Kriterienzähler; Bausteine
+                   freq_to_per_week()/rhythm_fit()/time_to_min()/time_fit()/
+                   reliability_fit()/intensity_fit()), top_matches_for_goal(),
+                   due_reminders(), checkin_history(), Connection.between()/
+                   .active_for()/.involves()/.partner_of(); berechnete Properties
+                   User.streak/.reputation/.activity_level/.avg_rating/.is_online;
+                   Spalten User.notify_email/.last_seen, Message.read_at
 forms.py         WTForms: LoginForm, RegistrationForm, EditProfileForm, GoalForm,
                           SearchForm, MessageForm, CheckinForm, SettingsForm,
                           CoachGoalForm, RatingForm

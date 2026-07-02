@@ -397,6 +397,66 @@ abgedeckt. M7/M8 zielen auf die Note Richtung 6.0.
   damit ein Nutzer mit mehreren Zielen für jedes einzelne passende Partner
   sieht, statt eines über alle Goals gemittelten Gesamt-Scores.
 
+### Matching v2a — Nähe statt Gleichheit · erledigt
+
+- **Datum:** 02.07.2026
+- **Ziel:** Höchster-ROI-Schritt aus `doc/matching-design.md` (§3, §3.1, §3.3):
+  den 0–4-Kriterienzähler durch einen kontinuierlichen [0,1]-Kompatibilitäts-
+  Score ersetzen, Frequenz/Zeit über Nähe statt exakter Gleichheit vergleichen,
+  Verlässlichkeit/Intensität vom reinen Tie-Break zu echten Score-Komponenten
+  machen.
+- **Was geändert wurde:**
+  - `models.py`: `MATCH_CRITERIA`/`MATCH_MAX_SCORE`/`_shared_criteria`/
+    `_goal_shared_criteria`/`_breakdown_from_shared` entfernt (Clean-Slate),
+    ersetzt durch `MATCH_WEIGHTS` (domain 0.30, rhythm 0.20, timefit 0.15,
+    reliab 0.15, intensity 0.10; Summe `MATCH_WEIGHT_TOTAL=0.90` — `proximity`
+    aus dem Design-Dokument ist erst v2d und wird durch die Division statt
+    fixer 1.0-Normierung implizit umverteilt).
+  - Neue Normalisierungs-Helfer: `freq_to_per_week()`, `rhythm_fit()`,
+    `time_to_min()` (nutzt intern das bestehende `_parse_time()`), `time_fit()`
+    (zirkulär über Mitternacht) — lösen den exakten Mengenschnitt auf
+    Frequenz-/Zeit-Strings ab.
+  - Neue Score-Komponenten `reliability_fit()` (Aktivitätsniveau + Online-
+    Status beider Nutzer) und `intensity_fit()` (Streak + Zielanzahl,
+    gedeckelt) — vorher nur indirekt über `reputation` als Tie-Break sichtbar,
+    jetzt echte gewichtete Score-Bausteine. Tie-Break bleibt `reputation`
+    (FA-13 AK3, unverändert).
+  - `match_score()`/`match_breakdown()` (ganzes Goal-Set) und
+    `match_breakdown_for_goal()`/`top_matches_for_goal()` (ein Goal) neu über
+    `_whole_set_components()`/`_goal_components()` + `_score_from_components()`
+    implementiert; Rückgabetyp von `int` (0–4) auf `float` ([0,1]) geändert.
+    `domain` bleibt bewusst reiner Kategorie-Vergleich (kein `goal_text`,
+    keine Embeddings — das ist v2c); ohne Text-Ähnlichkeit wird die 0.6-
+    Boost-Formel aus dem Design-Dokument auf einen einfachen 1.0/0.0-Wert
+    vereinfacht (kein künstlicher Deckel auf eine Komponente, die (noch)
+    keinen zweiten Signalanteil hat).
+  - `_breakdown_from_components()` liefert pro Komponente `label`, `fit`
+    (eigene [0,1]-Nähe) und `contribution` (gewichteter Anteil am
+    Gesamt-Score) — Transparenz bleibt erhalten (Beitrag statt nur Ja/Nein).
+  - `templates/search.html`, `templates/matches.html`: Anzeige von
+    `score / 4 * 100` auf `score * 100` umgestellt; Breakdown-Liste zeigt
+    Label + `+X%`-Beitrag statt eines reinen Ja/Nein-Kriteriums.
+  - `tests/test_m4.py`: alte 0–4-Exakt-Tests durch Helfer-Tests
+    (`freq_to_per_week`, `rhythm_fit`, `time_to_min`, `time_fit`) und einen
+    Ranking-Test (`test_match_score_ranks_by_overlap`, mit exaktem erwartetem
+    Score 0.89 für den Full-Overlap-Fall) ersetzt.
+  - `tests/test_matches.py`: `test_top_matches_ranks_full_overlap_first` auf
+    die neue Score-Skala umgestellt (exakter Full-Overlap-Wert + Ordering statt
+    fixem `{4, 2}`-Dict).
+  - `README.md`: Match-Score-Route und Domain-Helfer-Liste aktualisiert.
+- **How to run:** Keine Schema-Änderung (reine Domain-Logik) — kein Reset
+  nötig. `flask --app main run --debug` → `/search` bzw. `/matches`.
+- **How to test:** `pytest tests/ -v` → 69 passed.
+- **Deckt ab:** FA-05 (aussagekräftigeres Ranking), NFA-05 (weiterhin
+  deterministisch, keine Netz-/KI-Aufrufe).
+- **Known issues / Entscheidungen:** `proximity` (FA-14) bleibt außen vor
+  (v2d); `goal_text`-Embeddings (v2c) und die personenzentrierte Match-Seite
+  (v2b) sind eigene Folge-Meilensteine laut Design-Dokument. Domain-Komponente
+  ohne Text-Ähnlichkeit bewusst auf 1.0/0.0 vereinfacht statt der 0.6-Boost-
+  Formel, die erst mit Embeddings sinnvoll greift.
+- **Next steps:** v2b (personenzentrierte Match-Seite) oder v2c (Embeddings)
+  je nach Priorität vor der Abgabe; sonst weiter mit M8.
+
 ### M8 — Testlauf, Test-Prozeduren, Bug-Liste, MySQL · geplant
 
 - **Ziel:** Stabilität nachweisen und auf die Zielplattform integrieren.

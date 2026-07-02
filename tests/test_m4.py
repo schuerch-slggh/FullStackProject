@@ -2,7 +2,10 @@
 import pytest
 
 from FullStackProject import db
-from FullStackProject.models import User, Goal, Photo, Connection, match_score
+from FullStackProject.models import (
+    User, Goal, Photo, Connection,
+    match_score, freq_to_per_week, rhythm_fit, time_to_min, time_fit,
+)
 
 
 def _make_user(email, name="Test", city=None, goals=None):
@@ -20,42 +23,65 @@ def _sport_goal(**kw):
 
 
 # ---------------------------------------------------------------------------
+# Matching v2a: normalization helpers (freq/time closeness instead of equality)
+# ---------------------------------------------------------------------------
+
+def test_freq_to_per_week_parses_known_patterns():
+    assert freq_to_per_week("täglich") == 7.0
+    assert freq_to_per_week("3x pro Woche") == 3.0
+    assert freq_to_per_week("2x pro Monat") == pytest.approx(2 / 4.33)
+    assert freq_to_per_week(None) is None
+    assert freq_to_per_week("wann ich Lust habe") is None
+
+
+def test_rhythm_fit_rewards_closeness_not_just_equality():
+    """3x/4x pro Woche are 'close' now — the old exact-match gap this replaces."""
+    assert rhythm_fit("täglich", "täglich") == 1.0
+    assert rhythm_fit("3x pro Woche", "4x pro Woche") == pytest.approx(1 - 1 / 7)
+    assert rhythm_fit("täglich", None) == 0.0
+
+
+def test_time_fit_closeness_and_midnight_wrap():
+    assert time_to_min("08:00") == 480
+    assert time_to_min(None) is None
+    assert time_fit("08:00", "08:30") == pytest.approx(1 - 30 / 180)
+    assert time_fit("23:45", "00:15") == pytest.approx(1 - 30 / 180)  # wraps across midnight
+    assert time_fit("08:00", None) == 0.0
+
+
+# ---------------------------------------------------------------------------
 # match_score
 # ---------------------------------------------------------------------------
 
-def test_match_score_full_overlap(app):
-    """Same category + frequency + time → score 4."""
-    with app.app_context():
-        u1 = _make_user("s1@e.com", goals=[_sport_goal()])
-        u2 = _make_user("s2@e.com", goals=[_sport_goal()])
-        db.session.add_all([u1, u2])
-        db.session.commit()
-        assert match_score(u1, u2) == 4
+def test_match_score_ranks_by_overlap(app):
+    """Full goal overlap outranks category-only overlap, which outranks none.
 
-
-def test_match_score_category_only(app):
-    """Same category, different frequency and time → score 2."""
+    v2a replaces the old 0–4 integer score with a continuous [0,1] weighted
+    sum (domain/rhythm/timefit/reliab/intensity). For two fresh, single-goal,
+    never-checked-in users reliab=0.34 and intensity=1.0 in every case here,
+    so full overlap (domain=rhythm=timefit=1.0) comes out to a fixed
+    (.30+.20+.15+.15*.34+.10)/.90 = 0.89.
+    """
     with app.app_context():
-        u1 = _make_user("c1@e.com", goals=[_sport_goal()])
-        u2 = _make_user("c2@e.com", goals=[
+        owner = _make_user("o1@e.com", goals=[_sport_goal()])
+        full = _make_user("f1@e.com", goals=[_sport_goal()])
+        partial = _make_user("p1@e.com", goals=[
             dict(goal_category="Sport", goal_text="Schwimmen",
                  frequency="3x pro Woche", preferred_checkin_time="20:00")
         ])
-        db.session.add_all([u1, u2])
+        none = _make_user("n1@e.com", goals=[
+            dict(goal_category="Lernen", goal_text="Y",
+                 frequency="3x pro Woche", preferred_checkin_time="20:00")
+        ])
+        db.session.add_all([owner, full, partial, none])
         db.session.commit()
-        assert match_score(u1, u2) == 2
 
+        score_full = match_score(owner, full)
+        score_partial = match_score(owner, partial)
+        score_none = match_score(owner, none)
 
-def test_match_score_no_overlap(app):
-    """Completely different goals → score 0."""
-    with app.app_context():
-        u1 = _make_user("n1@e.com", goals=[dict(goal_category="Sport", goal_text="X",
-                                                  frequency="täglich", preferred_checkin_time="08:00")])
-        u2 = _make_user("n2@e.com", goals=[dict(goal_category="Lernen", goal_text="Y",
-                                                  frequency="3x pro Woche", preferred_checkin_time="20:00")])
-        db.session.add_all([u1, u2])
-        db.session.commit()
-        assert match_score(u1, u2) == 0
+        assert score_full == pytest.approx(0.89)
+        assert 0.0 <= score_none < score_partial < score_full <= 1.0
 
 
 # ---------------------------------------------------------------------------

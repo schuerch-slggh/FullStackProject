@@ -40,13 +40,13 @@
           </div>
         </div>
 
-        <div class="match" title="Match-Score: {{ score }} von 4 Kriterien">
-          <span class="match__value">{{ (score / 4 * 100)|round|int }}%</span>
+        <div class="match" title="Match-Score: {{ (score * 100)|round|int }}%">
+          <span class="match__value">{{ (score * 100)|round|int }}%</span>
           <span class="match__label">Match</span>
           <ul class="match__breakdown">
             {% for item in breakdown %}
-            <li class="match__criterion {{ 'match__criterion--yes' if item.matched else 'match__criterion--no' }}">
-              {{ item.label }}
+            <li class="match__criterion {{ 'match__criterion--yes' if item.fit >= 0.5 else 'match__criterion--no' }}">
+              {{ item.label }} · +{{ (item.contribution * 100)|round|int }}%
             </li>
             {% endfor %}
           </ul>

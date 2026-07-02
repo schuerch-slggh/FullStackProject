@@ -1,4 +1,6 @@
 """Matches-Tab: Top-3-Vorschläge je eigenem Ziel (FA-05, pro Goal statt global)."""
+import pytest
+
 from FullStackProject import db
 from FullStackProject.models import User, Goal, Photo, top_matches_for_goal
 
@@ -39,7 +41,12 @@ def test_top_matches_excludes_self_and_other_categories(app):
 
 
 def test_top_matches_ranks_full_overlap_first(app):
-    """A candidate sharing category+frequency+time outranks a category-only match."""
+    """A candidate sharing category+frequency+time outranks a category-only match.
+
+    v2a: continuous [0,1] score instead of the old 0–4 integers. For two
+    fresh, single-goal, never-checked-in users reliab=0.34 and intensity=1.0
+    always, so full overlap comes out to a fixed 0.89 (see test_m4.py).
+    """
     with app.app_context():
         owner = _make_user("owner2@e.com", goals=[_sport_goal()])
         full = _make_user("full@e.com", goals=[_sport_goal(goal_text="Joggen")])
@@ -52,7 +59,9 @@ def test_top_matches_ranks_full_overlap_first(app):
 
         results = top_matches_for_goal(owner.goals[0])
         assert [u.id for u, _ in results] == [full.id, partial.id]
-        assert dict((u.id, s) for u, s in results) == {full.id: 4, partial.id: 2}
+        scores = dict((u.id, s) for u, s in results)
+        assert scores[full.id] == pytest.approx(0.89)
+        assert 0.0 <= scores[partial.id] < scores[full.id] <= 1.0
 
 
 def test_top_matches_limit(app):

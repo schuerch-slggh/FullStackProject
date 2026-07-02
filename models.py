@@ -1,4 +1,5 @@
 """Database entities (ORM models) and domain helpers."""
+import re
 from datetime import datetime, date, time, timedelta
 
 from flask_login import UserMixin
@@ -360,85 +361,158 @@ class Appointment(db.Model):
         return f"<Appointment {self.id} conn={self.match_id} {self.status} @ {self.scheduled_at}>"
 
 
-# Named so the UI can show *why* two users matched, not just the percentage.
-MATCH_CRITERIA = (
-    ("category", "gleiche Zielkategorie", 2),
-    ("frequency", "passende Frequenz", 1),
-    ("checkin_time", "passende Check-in-Zeit", 1),
+# Weight per score component (Matching v2a, doc/matching-design.md §3). "proximity"
+# (distance) is deferred to v2d — its 0.10 weight is folded into these five by
+# dividing through MATCH_WEIGHT_TOTAL instead of 1.0, so the score below still
+# spans the full [0, 1] range without a dead "always missing" component.
+MATCH_WEIGHTS = (
+    ("domain", "Zielkategorie", 0.30),
+    ("rhythm", "Frequenz-Nähe", 0.20),
+    ("timefit", "Check-in-Zeit-Nähe", 0.15),
+    ("reliab", "Verlässlichkeit", 0.15),
+    ("intensity", "Commitment-Level", 0.10),
 )
-MATCH_MAX_SCORE = sum(points for _, _, points in MATCH_CRITERIA)
+MATCH_WEIGHT_TOTAL = sum(weight for _, _, weight in MATCH_WEIGHTS)
 
 
-def _shared_criteria(user_a: User, user_b: User) -> "dict[str, bool]":
-    """Which of the three match criteria user_a and user_b share, across all goals."""
-    cats_a = {g.goal_category for g in user_a.goals}
-    cats_b = {g.goal_category for g in user_b.goals}
-    freqs_a = {g.frequency for g in user_a.goals if g.frequency}
-    freqs_b = {g.frequency for g in user_b.goals if g.frequency}
-    times_a = {g.preferred_checkin_time for g in user_a.goals if g.preferred_checkin_time}
-    times_b = {g.preferred_checkin_time for g in user_b.goals if g.preferred_checkin_time}
-    return {
-        "category": bool(cats_a & cats_b),
-        "frequency": bool(freqs_a & freqs_b),
-        "checkin_time": bool(times_a & times_b),
-    }
+def freq_to_per_week(value: "str | None") -> "float | None":
+    """Parse a stored frequency ('täglich', '3x pro Woche', '2x pro Monat') into
+    sessions/week, or None if unset/unparseable."""
+    if not value:
+        return None
+    value = value.strip().lower()
+    if value == "täglich":
+        return 7.0
+    m = re.match(r"(\d+)x pro (woche|monat)", value)
+    if not m:
+        return None
+    count = int(m.group(1))
+    return count if m.group(2) == "woche" else count / 4.33
 
 
-def _breakdown_from_shared(shared: "dict[str, bool]") -> "list[dict]":
+def rhythm_fit(freq_a: "str | None", freq_b: "str | None") -> float:
+    """Closeness of two frequencies (1.0 = same rhythm, 0.0 = unparseable or ≥7 sessions/week apart)."""
+    per_week_a, per_week_b = freq_to_per_week(freq_a), freq_to_per_week(freq_b)
+    if per_week_a is None or per_week_b is None:
+        return 0.0
+    return 1 - min(1.0, abs(per_week_a - per_week_b) / 7.0)
+
+
+def time_to_min(value: "str | None") -> "int | None":
+    """Parse a stored check-in time ('08:00') into minutes since midnight."""
+    parsed = _parse_time(value) if value else None
+    return parsed.hour * 60 + parsed.minute if parsed else None
+
+
+def time_fit(time_a: "str | None", time_b: "str | None") -> float:
+    """Closeness of two check-in times, circular across midnight (≥3h apart = 0 credit)."""
+    min_a, min_b = time_to_min(time_a), time_to_min(time_b)
+    if min_a is None or min_b is None:
+        return 0.0
+    diff = abs(min_a - min_b)
+    diff = min(diff, 1440 - diff)
+    return 1 - min(1.0, diff / 180.0)
+
+
+def reliability_fit(user_a: User, user_b: User) -> float:
+    """Shared reliability (FA-13): both checking in, at a similar rate, with at
+    least one of them currently online."""
+    both_active = min(user_a.activity_level, user_b.activity_level)
+    similar = 1 - abs(user_a.activity_level - user_b.activity_level)
+    live = 1.0 if (user_a.is_online or user_b.is_online) else 0.85
+    return both_active * 0.6 + similar * 0.4 * live
+
+
+def intensity_fit(user_a: User, user_b: User) -> float:
+    """Closeness of two users' commitment level (streak + goal count, both capped)."""
+    level_a = min(user_a.streak, 30) / 30 + min(len(user_a.goals), 5) / 5
+    level_b = min(user_b.streak, 30) / 30 + min(len(user_b.goals), 5) / 5
+    return 1 - abs(level_a - level_b) / 2
+
+
+def _score_from_components(components: "dict[str, float]") -> float:
+    raw = sum(weight * components[key] for key, _, weight in MATCH_WEIGHTS)
+    return raw / MATCH_WEIGHT_TOTAL
+
+
+def _breakdown_from_components(components: "dict[str, float]") -> "list[dict]":
+    """One dict per component: `fit` is its own [0,1] closeness, `contribution`
+    is its weighted share of the final score — they sum back to the score that
+    `match_score`/`top_matches_for_goal` returned, so the UI can explain the
+    percentage instead of a plain yes/no list."""
     return [
-        {"label": label, "matched": shared[key], "points": points}
-        for key, label, points in MATCH_CRITERIA
+        {
+            "label": label,
+            "fit": components[key],
+            "contribution": weight * components[key] / MATCH_WEIGHT_TOTAL,
+        }
+        for key, label, weight in MATCH_WEIGHTS
     ]
 
 
-def match_score(user_a: User, user_b: User) -> int:
-    """Match score between two users based on goal overlap (0–4).
+def _whole_set_components(user_a: User, user_b: User) -> "dict[str, float]":
+    """Best-matching value per component across every pair of the two users' goals."""
+    cats_a = {g.goal_category for g in user_a.goals}
+    cats_b = {g.goal_category for g in user_b.goals}
+    pairs = [(ga, gb) for ga in user_a.goals for gb in user_b.goals]
+    return {
+        "domain": 1.0 if cats_a & cats_b else 0.0,
+        "rhythm": max((rhythm_fit(ga.frequency, gb.frequency) for ga, gb in pairs), default=0.0),
+        "timefit": max(
+            (time_fit(ga.preferred_checkin_time, gb.preferred_checkin_time) for ga, gb in pairs),
+            default=0.0,
+        ),
+        "reliab": reliability_fit(user_a, user_b),
+        "intensity": intensity_fit(user_a, user_b),
+    }
 
-    +2  at least one shared goal category
-    +1  at least one shared frequency
-    +1  at least one shared preferred check-in time
+
+def match_score(user_a: User, user_b: User) -> float:
+    """Continuous compatibility score in [0, 1] across the two users' whole goal set.
+
+    Weighted sum of `domain` (category overlap; goal_text similarity lands in
+    v2c), `rhythm`/`timefit` (closeness, not exact equality — see `rhythm_fit`/
+    `time_fit`), and `reliab`/`intensity` (shared reliability and commitment
+    level, formerly tie-break-only signals). `proximity` (v2d) is not yet part
+    of the score; its weight is folded into the others via `MATCH_WEIGHT_TOTAL`.
     """
-    shared = _shared_criteria(user_a, user_b)
-    return sum(points for key, _, points in MATCH_CRITERIA if shared[key])
+    return _score_from_components(_whole_set_components(user_a, user_b))
 
 
 def match_breakdown(user_a: User, user_b: User) -> "list[dict]":
-    """Per-criterion detail behind `match_score`, for UI transparency.
-
-    Returns one dict per criterion with `label`, `matched` and `points`, so
-    the search/matches views can show *why* a percentage came out as it did.
-    """
-    return _breakdown_from_shared(_shared_criteria(user_a, user_b))
+    """Per-component detail behind `match_score`, for UI transparency."""
+    return _breakdown_from_components(_whole_set_components(user_a, user_b))
 
 
-def _goal_shared_criteria(goal: "Goal", user: User) -> "dict[str, bool]":
-    """Which criteria `user` shares with one specific goal (Matches tab, FA-05)."""
+def _goal_components(goal: "Goal", user: User) -> "dict[str, float]":
+    """Best-matching value per component between one goal and `user`'s goals in
+    the same category (Matches tab, FA-05)."""
     same_category = [g for g in user.goals if g.goal_category == goal.goal_category]
     return {
-        "category": bool(same_category),
-        "frequency": bool(
-            goal.frequency and any(g.frequency == goal.frequency for g in same_category)
+        "domain": 1.0 if same_category else 0.0,
+        "rhythm": max((rhythm_fit(goal.frequency, g.frequency) for g in same_category), default=0.0),
+        "timefit": max(
+            (time_fit(goal.preferred_checkin_time, g.preferred_checkin_time) for g in same_category),
+            default=0.0,
         ),
-        "checkin_time": bool(
-            goal.preferred_checkin_time
-            and any(g.preferred_checkin_time == goal.preferred_checkin_time for g in same_category)
-        ),
+        "reliab": reliability_fit(goal.user, user),
+        "intensity": intensity_fit(goal.user, user),
     }
 
 
 def match_breakdown_for_goal(goal: "Goal", user: User) -> "list[dict]":
-    """Per-criterion detail behind one goal's match score (Matches tab)."""
-    return _breakdown_from_shared(_goal_shared_criteria(goal, user))
+    """Per-component detail behind one goal's match score (Matches tab)."""
+    return _breakdown_from_components(_goal_components(goal, user))
 
 
-def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, int]]":
+def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, float]]":
     """Best `limit` other users for one specific goal (FA-05, scoped per goal).
 
-    Unlike `match_score` (which compares a user's whole goal set), this looks
-    only at the given goal so the "Matches" tab can show relevant partners per
-    commitment. Candidates need at least one goal in the same category (+2);
-    a shared frequency or check-in time on that goal add +1 each (0–4, same
-    scale as `match_score`). Ties break by reputation (FA-13 AK3).
+    Same weighted components as `match_score`, but evaluated against this one
+    goal instead of the user's whole goal set. Candidates need at least one
+    goal in the same category (SQL-filtered below, so `domain` is always 1.0
+    here); rhythm/timefit closeness is scored against goals in that category
+    only. Ties break by reputation (FA-13 AK3).
     """
     candidates = (
         User.query.join(Goal)
@@ -446,10 +520,7 @@ def top_matches_for_goal(goal: "Goal", limit: int = 3) -> "list[tuple[User, int]
         .distinct()
         .all()
     )
-    scored = [
-        (user, sum(points for key, _, points in MATCH_CRITERIA if _goal_shared_criteria(goal, user)[key]))
-        for user in candidates
-    ]
+    scored = [(user, _score_from_components(_goal_components(goal, user))) for user in candidates]
     scored.sort(key=lambda pair: (pair[1], pair[0].reputation), reverse=True)
     return scored[:limit]
 
